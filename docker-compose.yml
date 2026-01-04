@@ -29,21 +29,21 @@ services:
     # environment:
     #   - NVIDIA_VISIBLE_DEVICES=all
 
-  # Frontend service (optional - can run separately)
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: hapie-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - hapie-network
-  #   restart: unless-stopped
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hapie-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - hapie-network
+    restart: unless-stopped
 
 volumes:
   hapie-data:

@@ -1,9 +1,9 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InfoPanel } from "@/components/info-panel"
-import { ChatInterface } from "@/components/chat-interface"
+import { SettingsView } from "@/components/settings-view"
 
-export default function Page() {
+export default function SettingsPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -12,12 +12,12 @@ export default function Page() {
           <header className="flex h-14 items-center gap-4 border-b bg-background/50 px-4 backdrop-blur">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Inference /</span>
-              <span className="text-sm font-semibold">Chat</span>
+              <span className="text-sm font-medium text-muted-foreground">Global /</span>
+              <span className="text-sm font-semibold">Settings</span>
             </div>
           </header>
           <main className="flex flex-1 flex-col overflow-hidden">
-            <ChatInterface />
+            <SettingsView />
           </main>
         </div>
         <InfoPanel />

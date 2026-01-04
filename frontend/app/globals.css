@@ -1,119 +1,111 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Light mode colors (ChatGPT style) */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f7f7f8;
-  --bg-tertiary: #ececf1;
-  --text-primary: #0d0d0d;
-  --text-secondary: #676767;
-  --text-tertiary: #8e8ea0;
-  --border-color: #e5e5e5;
-  --accent: #10a37f;
-  --accent-hover: #0d8c6d;
-  --user-message-bg: #f7f7f8;
-  --assistant-message-bg: #ffffff;
-  --input-bg: #ffffff;
-  --sidebar-bg: #f7f7f8;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.129 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.129 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.129 0 0);
+  --primary: oklch(0.208 0 0);
+  --primary-foreground: oklch(0.984 0 0);
+  --secondary: oklch(0.967 0 0);
+  --secondary-foreground: oklch(0.208 0 0);
+  --muted: oklch(0.967 0 0);
+  --muted-foreground: oklch(0.552 0 0);
+  --accent: oklch(0.967 0 0);
+  --accent-foreground: oklch(0.208 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.984 0 0);
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.707 0 0);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.984 0 0);
+  --sidebar-foreground: oklch(0.129 0 0);
+  --sidebar-primary: oklch(0.208 0 0);
+  --sidebar-primary-foreground: oklch(0.984 0 0);
+  --sidebar-accent: oklch(0.967 0 0);
+  --sidebar-accent-foreground: oklch(0.208 0 0);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.707 0 0);
 }
 
-[data-theme="dark"] {
-  /* Dark mode colors (ChatGPT style) */
-  --bg-primary: #0d0d0d;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #2f2f2f;
-  --text-primary: #ececec;
-  --text-secondary: #c5c5d2;
-  --text-tertiary: #8e8ea0;
-  --border-color: #2f2f2f;
-  --accent: #10a37f;
-  --accent-hover: #0d8c6d;
-  --user-message-bg: #2f2f2f;
-  --assistant-message-bg: #1a1a1a;
-  --input-bg: #2f2f2f;
-  --sidebar-bg: #0d0d0d;
+.dark {
+  /* Updated dark theme for a high-end AI infra look (deep black/grey) */
+  --background: oklch(0.129 0 0);
+  --foreground: oklch(0.984 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.984 0 0);
+  --popover: oklch(0.129 0 0);
+  --popover-foreground: oklch(0.984 0 0);
+  --primary: oklch(0.984 0 0);
+  --primary-foreground: oklch(0.129 0 0);
+  --secondary: oklch(0.25 0 0);
+  --secondary-foreground: oklch(0.984 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.704 0 0);
+  --accent: oklch(0.25 0 0);
+  --accent-foreground: oklch(0.984 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.25 0 0);
+  --input: oklch(0.25 0 0);
+  --ring: oklch(0.439 0 0);
+  --sidebar: oklch(0.11 0 0);
+  --sidebar-foreground: oklch(0.984 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.984 0 0);
+  --sidebar-accent: oklch(0.25 0 0);
+  --sidebar-accent-foreground: oklch(0.984 0 0);
+  --sidebar-border: oklch(0.2 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+@theme inline {
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
-}
-
-/* Custom utilities */
-.bg-primary {
-  background-color: var(--bg-primary);
-}
-
-.bg-secondary {
-  background-color: var(--bg-secondary);
-}
-
-.bg-tertiary {
-  background-color: var(--bg-tertiary);
-}
-
-.text-primary {
-  color: var(--text-primary);
-}
-
-.text-secondary {
-  color: var(--text-secondary);
-}
-
-.text-tertiary {
-  color: var(--text-tertiary);
-}
-
-.border-color {
-  border-color: var(--border-color);
-}
-
-.accent {
-  color: var(--accent);
-}
-
-.bg-accent {
-  background-color: var(--accent);
-}
-
-.bg-accent-hover:hover {
-  background-color: var(--accent-hover);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground selection:bg-primary selection:text-primary-foreground;
+  }
 }

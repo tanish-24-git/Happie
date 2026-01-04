@@ -1,9 +1,9 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InfoPanel } from "@/components/info-panel"
-import { ChatInterface } from "@/components/chat-interface"
+import { ModelComparison } from "@/components/model-comparison"
 
-export default function Page() {
+export default function ComparePage() {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -13,11 +13,11 @@ export default function Page() {
             <SidebarTrigger />
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-muted-foreground">Inference /</span>
-              <span className="text-sm font-semibold">Chat</span>
+              <span className="text-sm font-semibold">Model Comparison</span>
             </div>
           </header>
           <main className="flex flex-1 flex-col overflow-hidden">
-            <ChatInterface />
+            <ModelComparison />
           </main>
         </div>
         <InfoPanel />

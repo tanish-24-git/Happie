@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Backend API service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hapie-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist database and models
+      - hapie-data:/root/.hapie
+      # Mount code for development (comment out for production)
+      - ./backend/hapie:/app/hapie
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - hapie-network
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+    # GPU support (uncomment if you have NVIDIA GPU)
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+
+  # Frontend service (optional - can run separately)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: hapie-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - hapie-network
+  #   restart: unless-stopped
+
+volumes:
+  hapie-data:
+    driver: local
+
+networks:
+  hapie-network:
+    driver: bridge

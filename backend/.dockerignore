@@ -1,0 +1,21 @@
+# Don't copy virtual environments
+venv/
+.venv/
+
+# Don't copy cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Don't copy IDE files
+.vscode/
+.idea/
+
+# Don't copy local database (use volume instead)
+*.db
+*.sqlite
+
+# Don't copy downloaded models (use volume instead)
+models/
+*.gguf
+*.bin

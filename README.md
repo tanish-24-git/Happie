@@ -2,9 +2,71 @@
 
 **Local-first AI inference platform with hardware-aware optimization**
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Docker - Recommended)
 
-### 1. Install Dependencies
+### Prerequisites
+- Docker Desktop installed and running
+- 8GB+ RAM recommended
+- (Optional) NVIDIA GPU with Docker GPU support
+
+### 1. Start HAPIE with Docker
+
+**Windows:**
+```powershell
+.\docker-setup.ps1
+```
+
+**Linux/Mac:**
+```bash
+chmod +x docker-setup.sh
+./docker-setup.sh
+```
+
+**Or manually:**
+```bash
+docker-compose up -d
+```
+
+### 2. Setup Base Model
+
+```bash
+docker-compose exec backend python setup.py
+```
+
+This will:
+- Detect your hardware (CPU, RAM, GPU)
+- Download the base model (Qwen2.5-1.5B-Instruct ~900MB)
+- Configure execution policy based on your hardware
+
+### 3. Access the API
+
+The API will be available at `http://localhost:8000`
+- **Interactive API Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+## 🔧 Docker Commands
+
+```bash
+# View logs
+docker-compose logs -f backend
+
+# Stop services
+docker-compose down
+
+# Restart services
+docker-compose restart
+
+# Access container shell
+docker-compose exec backend bash
+
+# Rebuild after code changes
+docker-compose build
+docker-compose up -d
+```
+
+## 🐍 Alternative: Local Python Setup
+
+If you prefer running without Docker:
 
 ```bash
 cd backend
@@ -149,6 +211,7 @@ python setup.py
 - [x] Model management (HuggingFace pulling)
 - [x] Single-model chat
 - [x] Multi-model comparison
+- [x] Docker containerization
 - [ ] Frontend UI (Next.js)
 - [ ] Image generation
 - [ ] Audio generation (TTS/STT)

@@ -1,0 +1,23 @@
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+sqlalchemy==2.0.25
+aiosqlite==0.19.0
+
+# Hardware detection
+psutil==5.9.8
+GPUtil==1.4.0
+py-cpuinfo==9.0.0
+
+# Model inference
+llama-cpp-python==0.2.27
+huggingface-hub==0.20.3
+transformers==4.37.2
+
+# HTTP client
+httpx==0.26.0
+aiofiles==23.2.1
+
+# CORS and middleware
+python-multipart==0.0.6

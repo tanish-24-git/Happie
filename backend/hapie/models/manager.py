@@ -1,0 +1,202 @@
+"""Model management system for HAPIE"""
+
+import os
+import json
+from pathlib import Path
+from typing import List, Optional, Dict
+from huggingface_hub import hf_hub_download, list_repo_files
+from hapie.db import get_db
+from hapie.db.models import Model as DBModel
+
+
+class ModelManager:
+    """Manages model installation, removal, and registry"""
+    
+    def __init__(self):
+        self.db = get_db()
+        self.models_dir = Path.home() / ".hapie" / "models"
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+    
+    def list_models(self) -> List[Dict]:
+        """List all registered models"""
+        session = self.db.get_session()
+        try:
+            models = session.query(DBModel).all()
+            return [m.to_dict() for m in models]
+        finally:
+            session.close()
+    
+    def get_model(self, model_id: str) -> Optional[Dict]:
+        """Get model by ID"""
+        session = self.db.get_session()
+        try:
+            model = session.query(DBModel).filter(DBModel.id == model_id).first()
+            return model.to_dict() if model else None
+        finally:
+            session.close()
+    
+    def get_active_model(self) -> Optional[Dict]:
+        """Get currently active model"""
+        session = self.db.get_session()
+        try:
+            model = session.query(DBModel).filter(DBModel.is_active == True).first()
+            return model.to_dict() if model else None
+        finally:
+            session.close()
+    
+    def set_active_model(self, model_id: str) -> bool:
+        """Set a model as active (deactivates others)"""
+        session = self.db.get_session()
+        try:
+            # Deactivate all models
+            session.query(DBModel).update({DBModel.is_active: False})
+            
+            # Activate target model
+            model = session.query(DBModel).filter(DBModel.id == model_id).first()
+            if model:
+                model.is_active = True
+                session.commit()
+                return True
+            return False
+        finally:
+            session.close()
+    
+    def register_model(
+        self,
+        model_id: str,
+        name: str,
+        model_type: str,
+        provider: str,
+        backend: str,
+        model_path: str,
+        size_mb: float = 0,
+        is_base_model: bool = False,
+        metadata: Dict = None
+    ) -> Dict:
+        """Register a new model in the database"""
+        session = self.db.get_session()
+        try:
+            # Check if model already exists
+            existing = session.query(DBModel).filter(DBModel.id == model_id).first()
+            if existing:
+                return existing.to_dict()
+            
+            model = DBModel(
+                id=model_id,
+                name=name,
+                type=model_type,
+                provider=provider,
+                backend=backend,
+                model_path=model_path,
+                size_mb=size_mb,
+                is_base_model=is_base_model,
+                metadata_json=metadata or {}
+            )
+            session.add(model)
+            session.commit()
+            session.refresh(model)
+            return model.to_dict()
+        finally:
+            session.close()
+    
+    def remove_model(self, model_id: str) -> bool:
+        """Remove a model from registry and delete files"""
+        session = self.db.get_session()
+        try:
+            model = session.query(DBModel).filter(DBModel.id == model_id).first()
+            if not model:
+                return False
+            
+            # Don't allow removing base model
+            if model.is_base_model:
+                raise ValueError("Cannot remove base model")
+            
+            # Delete model files if local
+            if model.type == "local" and model.model_path:
+                model_path = Path(model.model_path)
+                if model_path.exists():
+                    if model_path.is_file():
+                        model_path.unlink()
+                    elif model_path.is_dir():
+                        import shutil
+                        shutil.rmtree(model_path)
+            
+            session.delete(model)
+            session.commit()
+            return True
+        finally:
+            session.close()
+    
+    def pull_huggingface_model(
+        self,
+        repo_id: str,
+        filename: str,
+        model_id: str = None,
+        name: str = None
+    ) -> Dict:
+        """
+        Pull a GGUF model from Hugging Face
+        
+        Args:
+            repo_id: HuggingFace repo ID (e.g., "TheBloke/Llama-2-7B-GGUF")
+            filename: Model filename (e.g., "llama-2-7b.Q4_K_M.gguf")
+            model_id: Custom model ID (defaults to filename without extension)
+            name: Display name (defaults to repo_id)
+        
+        Returns:
+            Registered model dict
+        """
+        if model_id is None:
+            model_id = Path(filename).stem
+        
+        if name is None:
+            name = repo_id.split("/")[-1]
+        
+        # Download model
+        print(f"Downloading {repo_id}/{filename}...")
+        local_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            cache_dir=str(self.models_dir),
+            resume_download=True
+        )
+        
+        # Get file size
+        size_mb = Path(local_path).stat().st_size / (1024 * 1024)
+        
+        # Register model
+        return self.register_model(
+            model_id=model_id,
+            name=name,
+            model_type="local",
+            provider="huggingface",
+            backend="llama.cpp",
+            model_path=local_path,
+            size_mb=size_mb,
+            metadata={
+                "repo_id": repo_id,
+                "filename": filename
+            }
+        )
+    
+    def add_cloud_model(
+        self,
+        model_id: str,
+        name: str,
+        provider: str,
+        api_endpoint: str,
+        api_key: str = None
+    ) -> Dict:
+        """Add a cloud API model (OpenAI, Anthropic, etc.)"""
+        return self.register_model(
+            model_id=model_id,
+            name=name,
+            model_type="cloud",
+            provider=provider,
+            backend="api",
+            model_path=api_endpoint,
+            metadata={
+                "api_key": api_key,
+                "endpoint": api_endpoint
+            }
+        )

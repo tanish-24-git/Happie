@@ -13,8 +13,14 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first for better caching
 COPY requirements.txt .
 
+# Set environment variables for llama-cpp-python
+ENV CMAKE_ARGS="-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=OpenBLAS"
+ENV FORCE_CMAKE=1
+
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Use pre-built wheels when available
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY hapie/ ./hapie/

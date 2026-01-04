@@ -1,6 +1,7 @@
 "use client"
 
 import { Moon, Sun, Key, RefreshCw, AlertTriangle, Shield, Terminal } from "lucide-react"
+import { useTheme } from "next-themes"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -9,6 +10,8 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
 export function SettingsView() {
+  const { theme, setTheme } = useTheme()
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background">
       <ScrollArea className="flex-1">
@@ -28,11 +31,21 @@ export function SettingsView() {
                     <p className="text-xs text-muted-foreground">High-contrast interface for technical environments.</p>
                   </div>
                   <div className="flex items-center gap-2 rounded-md border p-1 bg-muted/30">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 bg-background">
+                    <Button 
+                      variant={theme === "dark" ? "secondary" : "ghost"} 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => setTheme("dark")}
+                    >
                       <Moon className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Sun className="h-4 w-4 text-muted-foreground" />
+                    <Button 
+                      variant={theme === "light" ? "secondary" : "ghost"} 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => setTheme("light")}
+                    >
+                      <Sun className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -51,6 +64,17 @@ export function SettingsView() {
             </div>
             <Card className="bg-muted/5">
               <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
+                    Google / Gemini API Key
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input type="password" placeholder="AIzaSy..." className="font-mono text-xs" />
+                    <Button variant="outline" size="sm">
+                      Update
+                    </Button>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
                     OpenAI API Key

@@ -38,12 +38,18 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # API URL from container perspective (backend service name)
+      - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
       - backend
     networks:
       - hapie-network
     restart: unless-stopped
+    # volumes:
+    #   # Mount code for development hot reload (comment out for production)
+    #   - ./frontend:/app
+    #   - /app/node_modules
+    #   - /app/.next
 
 volumes:
   hapie-data:

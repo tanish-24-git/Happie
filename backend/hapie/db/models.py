@@ -94,3 +94,29 @@ class Message(Base):
             "model_id": self.model_id,
             "created_at": self.created_at,
         }
+
+
+class ApiKey(Base):
+    """
+    Encrypted storage for user-provided cloud API keys
+    
+    Security notes:
+    - Keys stored encrypted using Fernet
+    - Never transmitted to HAPIE servers
+    - Decrypted only in memory at request time
+    """
+    __tablename__ = "api_keys"
+    
+    provider = Column(String, primary_key=True)  # "openai", "anthropic", etc.
+    encrypted_key = Column(Text, nullable=False)  # Fernet-encrypted
+    created_at = Column(Integer, nullable=False)
+    last_used = Column(Integer, nullable=True)  # Unix timestamp
+    
+    def to_dict(self):
+        """Returns masked key for UI display"""
+        return {
+            "provider": self.provider,
+            "key_preview": "***...***",  # Never expose full key
+            "created_at": self.created_at,
+            "last_used": self.last_used,
+        }

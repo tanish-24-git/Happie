@@ -21,3 +21,6 @@ aiofiles==23.2.1
 
 # CORS and middleware
 python-multipart==0.0.6
+
+# Cloud provider integration
+cryptography==42.0.5

@@ -81,32 +81,47 @@ async def single_chat(request: ChatRequest):
     
     model_id = model["id"]
     
-    # Load model if not already loaded
-    if not inference_engine.is_loaded(model_id):
-        capability = detector.detect()
-        policy = policy_engine.evaluate(capability)
-        
+    # Check if this is a cloud model
+    if model.get("backend") == "cloud_api":
+        # Route to cloud inference
         try:
-            inference_engine.load_model(
-                model_path=model["model_path"],
-                policy=policy,
-                model_id=model_id
+            result = await inference_engine.generate_cloud(
+                model=model,
+                prompt=request.prompt,
+                max_tokens=request.max_tokens,
+                temperature=request.temperature,
+                top_p=request.top_p
             )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
-    
-    # Generate response
-    try:
-        result = inference_engine.generate(
-            model_id=model_id,
-            prompt=request.prompt,
-            max_tokens=request.max_tokens,
-            temperature=request.temperature,
-            top_p=request.top_p,
-            stream=False
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Cloud inference failed: {str(e)}")
+    else:
+        # Local model inference
+        # Load model if not already loaded
+        if not inference_engine.is_loaded(model_id):
+            capability = detector.detect()
+            policy = policy_engine.evaluate(capability)
+            
+            try:
+                inference_engine.load_model(
+                    model_path=model["model_path"],
+                    policy=policy,
+                    model_id=model_id
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+        
+        # Generate response
+        try:
+            result = inference_engine.generate(
+                model_id=model_id,
+                prompt=request.prompt,
+                max_tokens=request.max_tokens,
+                temperature=request.temperature,
+                top_p=request.top_p,
+                stream=False
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
     
     # Save to database
     db = get_db()

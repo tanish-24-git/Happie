@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Send, User, Bot, ChevronDown, Monitor, Cloud, Zap } from "lucide-react"
+import { Send, User, Bot, ChevronDown, Monitor, Cloud, Zap, DollarSign, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,33 +15,117 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useToast } from "@/hooks/use-toast"
+import apiClient, { Model, ChatResponse } from "@/lib/api"
 
-const INITIAL_MESSAGES = [
-  {
-    role: "assistant",
-    content: "System ready. Local inference active on CUDA device 0. How can I assist with your deployment today?",
-  },
-]
+interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+  metrics?: {
+    latency_ms?: number
+    tokens_per_sec?: number
+    provider?: string
+    estimated_cost_usd?: number
+  }
+}
 
 export function ChatInterface() {
-  const [messages, setMessages] = React.useState(INITIAL_MESSAGES)
+  const [messages, setMessages] = React.useState<ChatMessage[]>([])
   const [input, setInput] = React.useState("")
+  const [models, setModels] = React.useState<Model[]>([])
+  const [selectedModel, setSelectedModel] = React.useState<Model | null>(null)
+  const [isLoading, setIsLoading] = React.useState(false)
+  const [conversationId, setConversationId] = React.useState<string>()
   const scrollRef = React.useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
 
-  const handleSend = () => {
-    if (!input.trim()) return
-    setMessages([...messages, { role: "user", content: input }])
+  // Load models on mount
+  React.useEffect(() => {
+    loadModels()
+  }, [])
+
+  const loadModels = async () => {
+    try {
+      const modelsList = await apiClient.listModels()
+      setModels(modelsList)
+      
+      // Get active model
+      const activeModel = await apiClient.getActiveModel()
+      if (activeModel) {
+        setSelectedModel(activeModel)
+      } else if (modelsList.length > 0) {
+        // Select first local model as default
+        const firstLocal = modelsList.find(m => m.backend !== 'cloud_api')
+        setSelectedModel(firstLocal || modelsList[0])
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to load models",
+        description: error instanceof Error ? error.message : "Unknown error",
+      })
+    }
+  }
+
+  const handleSend = async () => {
+    if (!input.trim() || !selectedModel) return
+
+    const userMessage: ChatMessage = { role: "user", content: input }
+    setMessages(prev => [...prev, userMessage])
     setInput("")
-    // Mock assistant response
-    setTimeout(() => {
-      setMessages((prev) => [
+    setIsLoading(true)
+
+    try {
+      const response: ChatResponse = await apiClient.chatSingle({
+        prompt: input,
+        model_id: selectedModel.id,
+        conversation_id: conversationId,
+      })
+
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: response.text,
+        metrics: response.metrics,
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+      setConversationId(response.conversation_id)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      
+      toast({
+        variant: "destructive",
+        title: "Inference failed",
+        description: errorMessage,
+      })
+
+      // Add error message to chat
+      setMessages(prev => [
         ...prev,
         {
           role: "assistant",
-          content: "Received. Analyzing request with Llama 3.1 (Local)... Processing tokens at 42 t/s.",
+          content: `[ERROR] ${errorMessage}`,
         },
       ])
-    }, 1000)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Separate models into local and cloud
+  const localModels = models.filter(m => m.backend !== 'cloud_api')
+  const cloudModels = models.filter(m => m.backend === 'cloud_api')
+
+  // Check if selected model is cloud
+  const isCloudModel = selectedModel?.backend === 'cloud_api'
+
+  // Get backend display name
+  const getBackendDisplay = () => {
+    if (!selectedModel) return "No Model"
+    if (selectedModel.backend === 'cloud_api') {
+      return `Cloud API (${selectedModel.provider || 'Unknown'})`
+    }
+    return selectedModel.backend.toUpperCase()
   }
 
   return (
@@ -51,34 +135,71 @@ export function ChatInterface() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 gap-2 font-medium">
-              <Bot className="h-4 w-4" />
-              Llama 3.1 8B
+              {isCloudModel ? <Cloud className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+              {selectedModel?.name || "Select Model"}
               <ChevronDown className="h-3 w-3 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[200px]">
-            <DropdownMenuLabel>Local Models</DropdownMenuLabel>
-            <DropdownMenuItem className="gap-2">
-              <Monitor className="h-4 w-4" /> Llama 3.1 8B <Badge className="ml-auto">Active</Badge>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2">
-              <Monitor className="h-4 w-4" /> Mistral v0.3
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Cloud Models</DropdownMenuLabel>
-            <DropdownMenuItem className="gap-2">
-              <Cloud className="h-4 w-4" /> GPT-4o
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2">
-              <Cloud className="h-4 w-4" /> Claude 3.5 Sonnet
-            </DropdownMenuItem>
+          <DropdownMenuContent align="start" className="w-[250px]">
+            <DropdownMenuLabel className="flex items-center gap-2">
+              <Monitor className="h-4 w-4" />
+              Local Models
+              <Badge variant="outline" className="ml-auto text-[10px]">FREE</Badge>
+            </DropdownMenuLabel>
+            {localModels.map((model) => (
+              <DropdownMenuItem
+                key={model.id}
+                className="gap-2"
+                onClick={() => setSelectedModel(model)}
+              >
+                <Monitor className="h-4 w-4" />
+                {model.name}
+                {model.is_active && <Badge className="ml-auto text-[10px]">Active</Badge>}
+              </DropdownMenuItem>
+            ))}
+
+            {cloudModels.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="flex items-center gap-2">
+                  <Cloud className="h-4 w-4" />
+                  Cloud Models
+                  <Badge variant="destructive" className="ml-auto text-[10px]">PAID</Badge>
+                </DropdownMenuLabel>
+                {cloudModels.map((model) => (
+                  <DropdownMenuItem
+                    key={model.id}
+                    className="gap-2"
+                    onClick={() => setSelectedModel(model)}
+                  >
+                    <Cloud className="h-4 w-4" />
+                    {model.name}
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {model.provider}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+
+            {models.length === 0 && (
+              <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                No models available
+              </div>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
         <div className="flex items-center gap-4">
+          {isCloudModel && (
+            <Badge variant="destructive" className="text-xs gap-1">
+              <DollarSign className="h-3 w-3" />
+              Usage-based pricing
+            </Badge>
+          )}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Zap className="h-3 w-3 text-amber-500" />
-            <span>CUDA</span>
+            <span>{getBackendDisplay()}</span>
           </div>
           <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
             Single Model Mode
@@ -89,6 +210,18 @@ export function ChatInterface() {
       {/* Messages Area */}
       <ScrollArea className="flex-1 px-4 py-6">
         <div className="mx-auto max-w-3xl space-y-8">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Bot className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Ready for inference</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                {selectedModel 
+                  ? `${selectedModel.name} is loaded. Start a conversation below.`
+                  : "Select a model and start chatting."}
+              </p>
+            </div>
+          )}
+
           {messages.map((message, i) => (
             <div
               key={i}
@@ -108,11 +241,29 @@ export function ChatInterface() {
                 >
                   {message.content}
                 </div>
-                {message.role === "assistant" && (
+                {message.role === "assistant" && message.metrics && (
                   <div className="flex items-center gap-2 px-1 text-[10px] text-muted-foreground">
-                    <span>1.2s latency</span>
-                    <span>•</span>
-                    <span>Local (CUDA)</span>
+                    {message.metrics.latency_ms && (
+                      <>
+                        <span>{(message.metrics.latency_ms / 1000).toFixed(2)}s latency</span>
+                        <span>•</span>
+                      </>
+                    )}
+                    {message.metrics.tokens_per_sec && (
+                      <>
+                        <span>{message.metrics.tokens_per_sec.toFixed(1)} t/s</span>
+                        <span>•</span>
+                      </>
+                    )}
+                    <span>{message.metrics.provider || getBackendDisplay()}</span>
+                    {message.metrics.estimated_cost_usd && (
+                      <>
+                        <span>•</span>
+                        <span className="text-amber-500">
+                          ${message.metrics.estimated_cost_usd.toFixed(4)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -123,17 +274,42 @@ export function ChatInterface() {
               )}
             </div>
           ))}
+
+          {isLoading && (
+            <div className="flex gap-4 text-sm">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted/50">
+                <Bot className="h-4 w-4 animate-pulse" />
+              </div>
+              <div className="max-w-[80%] space-y-2">
+                <div className="rounded-lg px-4 py-2 bg-muted/30 border">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="h-2 w-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="h-2 w-2 bg-current rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
 
       {/* Input Area */}
       <div className="border-t p-4">
+        {!selectedModel && (
+          <div className="mx-auto max-w-3xl mb-3 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>Please select a model to start chatting</span>
+          </div>
+        )}
+
         <div className="mx-auto max-w-3xl relative">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask the active model..."
+            placeholder={selectedModel ? "Ask the active model..." : "Select a model first..."}
             className="min-h-[60px] pr-12 resize-none bg-muted/20 border-muted"
+            disabled={!selectedModel || isLoading}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
@@ -145,13 +321,15 @@ export function ChatInterface() {
             size="icon"
             className="absolute bottom-2 right-2 h-8 w-8 transition-transform active:scale-95"
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || !selectedModel || isLoading}
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
         <p className="mt-2 text-center text-[10px] text-muted-foreground">
-          Inference performed on local hardware. Data stays private.
+          {isCloudModel 
+            ? `Cloud inference via ${selectedModel?.provider}. Usage billed directly to your account.`
+            : "Local inference on your hardware. Data stays private."}
         </p>
       </div>
     </div>

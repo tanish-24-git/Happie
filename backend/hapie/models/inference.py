@@ -5,13 +5,84 @@ from typing import Dict, Optional, Generator
 from pathlib import Path
 from llama_cpp import Llama
 from hapie.policy import ExecutionPolicy, BackendType
+import httpx
+from fastapi import HTTPException
 
 
 class InferenceEngine:
-    """Handles model inference execution"""
+    """Handles model inference execution (local and cloud)"""
     
     def __init__(self):
-        self._loaded_models: Dict[str, Llama] = {}
+        self._loaded_models: Dict[str, Llama] = {}  # Local models only
+    
+    async def generate_cloud(
+        self,
+        model: Dict,
+        prompt: str,
+        **kwargs
+    ) -> Dict:
+        """
+        Execute cloud inference directly from local agent.
+        
+        Request flow:
+        1. Retrieve encrypted API key from local database
+        2. Decrypt in memory (never logged)
+        3. Send request directly to cloud provider
+        4. Return response to frontend
+        
+        At NO point does the request go through HAPIE servers.
+        """
+        from hapie.cloud import ApiKeyManager, ProviderRegistry
+        from hapie.db import get_db
+        
+        provider_name = model["provider"]
+        provider = ProviderRegistry.get(provider_name)
+        
+        db = get_db()
+        session = db.get_session()
+        try:
+            manager = ApiKeyManager(session)
+            
+            try:
+                # Retrieve and decrypt API key (in-memory only)
+                api_key = manager.get_key(provider_name)
+            except KeyError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"API key not configured for {provider_name}. Please add your API key in Settings."
+                )
+            
+            try:
+                # Direct API call from local agent to cloud provider
+                result = await provider.generate(
+                    prompt=prompt,
+                    api_key=api_key,  # Decrypted in memory, never logged
+                    model_name=model.get("cloud_model_name", model["name"]),
+                    max_tokens=kwargs.get("max_tokens", 512),
+                    temperature=kwargs.get("temperature", 0.7),
+                )
+                
+                return result
+                
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 401:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Invalid API key. Please update in Settings."
+                    )
+                elif e.response.status_code == 429:
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Rate limit exceeded. Please try again later."
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Cloud provider error: {str(e)}"
+                    )
+        finally:
+            session.close()
+
     
     def load_model(
         self,

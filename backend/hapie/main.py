@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from hapie.api import system, chat, models
+from hapie.api import system, chat, models, settings
 from hapie.db import get_db
 from hapie.hardware import HardwareDetector
 from hapie.policy import PolicyEngine
@@ -72,6 +72,7 @@ app.add_middleware(
 app.include_router(system.router, prefix="/api/system", tags=["System"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(models.router, prefix="/api/models", tags=["Models"])
+app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 
 
 @app.get("/")

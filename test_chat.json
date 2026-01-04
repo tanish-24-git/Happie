@@ -1,4 +1,4 @@
 {
-  "prompt": "Explain what HAPIE is in one sentence",
-  "max_tokens": 100
+  "prompt": "What is 2+2? Answer in one short sentence.",
+  "max_tokens": 50
 }

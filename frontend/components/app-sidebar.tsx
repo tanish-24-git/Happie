@@ -2,6 +2,7 @@
 
 import type * as React from "react"
 import { MessageSquare, Repeat, ImageIcon, Headphones, Info, Settings, Cpu, Box } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle"
 
 import {
   Sidebar,
@@ -118,6 +119,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          <SidebarMenuItem>
+             <div className="px-2 py-1.5">
+               <ModeToggle />
+             </div>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

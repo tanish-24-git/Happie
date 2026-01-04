@@ -271,10 +271,29 @@ class ApiClient {
     });
   }
 
-  async registerCloudModel(request: RegisterCloudModelRequest): Promise<Model> {
+  async registerCloudModel(data: {
+    model_id: string;
+    name: string;
+    provider: string;
+    api_endpoint: string;
+    cloud_model_name?: string;
+    api_key?: string;
+  }): Promise<Model> {
     return this.request<Model>('/api/models/cloud', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify(data),
+    });
+  }
+
+  async validateCloudModel(data: {
+    provider: string;
+    api_key: string;
+    model_id?: string;
+    base_url?: string;
+  }): Promise<{ valid: boolean; provider: string; model_id?: string; error?: string }> {
+    return this.request('/api/models/cloud/validate', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 
@@ -389,6 +408,7 @@ export const {
   setActiveModel,
   pullModel,
   registerCloudModel,
+  validateCloudModel,
   deleteModel,
   chatSingle,
   chatCompare,

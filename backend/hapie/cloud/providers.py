@@ -342,6 +342,160 @@ class DeepSeekProvider(BaseProvider):
         return input_cost + output_cost
 
 
+class GrokProvider(BaseProvider):
+    """Grok (xAI) cloud provider - OpenAI-compatible API"""
+    
+    async def generate(
+        self,
+        prompt: str,
+        api_key: str,
+        model_name: str = "grok-beta",
+        max_tokens: int = 512,
+        temperature: float = 0.7,
+    ) -> Dict:
+        """Generate response using Grok API"""
+        start_time = datetime.now()
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.x.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                },
+                timeout=60.0
+            )
+            
+            elapsed_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+            response.raise_for_status()
+            data = response.json()
+            
+            prompt_tokens = data["usage"]["prompt_tokens"]
+            completion_tokens = data["usage"]["completion_tokens"]
+            
+            return {
+                "text": data["choices"][0]["message"]["content"],
+                "metrics": {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "tokens_generated": completion_tokens,
+                    "latency_ms": elapsed_ms,
+                    "tokens_per_sec": completion_tokens / (elapsed_ms / 1000) if elapsed_ms > 0 else 0,
+                    "provider": "Grok (xAI)",
+                    "model": model_name,
+                    "estimated_cost_usd": self.estimate_cost(prompt_tokens, completion_tokens, model_name)
+                }
+            }
+    
+    async def validate_key(self, api_key: str) -> bool:
+        """Validate Grok API key"""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.x.ai/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10.0
+                )
+                return response.status_code == 200
+        except:
+            return False
+    
+    def estimate_cost(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        model_name: str = ""
+    ) -> float:
+        """Estimate cost for Grok usage"""
+        # Grok pricing: $5/1M input, $15/1M output
+        input_cost = (prompt_tokens / 1_000_000) * 5.0
+        output_cost = (completion_tokens / 1_000_000) * 15.0
+        return input_cost + output_cost
+
+
+class GroqProvider(BaseProvider):
+    """Groq cloud provider - OpenAI-compatible API"""
+    
+    async def generate(
+        self,
+        prompt: str,
+        api_key: str,
+        model_name: str = "llama3-70b-8192",
+        max_tokens: int = 512,
+        temperature: float = 0.7,
+    ) -> Dict:
+        """Generate response using Groq API"""
+        start_time = datetime.now()
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                },
+                timeout=60.0
+            )
+            
+            elapsed_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+            response.raise_for_status()
+            data = response.json()
+            
+            prompt_tokens = data["usage"]["prompt_tokens"]
+            completion_tokens = data["usage"]["completion_tokens"]
+            
+            return {
+                "text": data["choices"][0]["message"]["content"],
+                "metrics": {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "tokens_generated": completion_tokens,
+                    "latency_ms": elapsed_ms,
+                    "tokens_per_sec": completion_tokens / (elapsed_ms / 1000) if elapsed_ms > 0 else 0,
+                    "provider": "Groq",
+                    "model": model_name,
+                    "estimated_cost_usd": self.estimate_cost(prompt_tokens, completion_tokens, model_name)
+                }
+            }
+    
+    async def validate_key(self, api_key: str) -> bool:
+        """Validate Groq API key"""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10.0
+                )
+                return response.status_code == 200
+        except:
+            return False
+    
+    def estimate_cost(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        model_name: str = ""
+    ) -> float:
+        """Estimate cost for Groq usage"""
+        # Groq pricing: $0.27/1M input, $0.27/1M output (very affordable!)
+        input_cost = (prompt_tokens / 1_000_000) * 0.27
+        output_cost = (completion_tokens / 1_000_000) * 0.27
+        return input_cost + output_cost
+
+
 class ProviderRegistry:
     """Central registry for all cloud providers"""
     
@@ -350,6 +504,8 @@ class ProviderRegistry:
         "anthropic": AnthropicProvider(),
         "google": GoogleProvider(),
         "deepseek": DeepSeekProvider(),
+        "grok": GrokProvider(),
+        "groq": GroqProvider(),
     }
     
     @classmethod

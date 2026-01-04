@@ -17,13 +17,13 @@ class ModelResponse(BaseModel):
     id: str
     name: str
     type: str
-    provider: str | None
-    size_mb: float | None
+    provider: Optional[str] = None
+    size_mb: Optional[float] = None
     backend: str
     is_active: bool
     is_base_model: bool
-    model_path: str | None
-    metadata: Dict | None
+    model_path: Optional[str] = None
+    metadata: Optional[Dict] = None
     created_at: int
 
 
@@ -41,7 +41,16 @@ class AddCloudModelRequest(BaseModel):
     name: str
     provider: str
     api_endpoint: str
+    cloud_model_name: Optional[str] = None  # Actual model ID for provider (e.g., "grok-beta")
     api_key: Optional[str] = None
+
+
+class ValidateCloudModelRequest(BaseModel):
+    """Request to validate a cloud model without saving"""
+    provider: str
+    api_key: str
+    model_id: Optional[str] = None
+    base_url: Optional[str] = None
 
 
 class RegisterModelRequest(BaseModel):
@@ -73,7 +82,7 @@ async def get_model(model_id: str):
     return model
 
 
-@router.get("/active/current", response_model=ModelResponse | None)
+@router.get("/active/current", response_model=Optional[ModelResponse])
 async def get_active_model():
     """Get currently active model"""
     model = model_manager.get_active_model()
@@ -162,3 +171,33 @@ async def remove_model(model_id: str):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to remove model: {str(e)}")
+
+
+@router.post("/cloud/validate")
+async def validate_cloud_model(request: ValidateCloudModelRequest):
+    """
+    Validate cloud model API key without persisting.
+    
+    Returns validation status and error details if invalid.
+    """
+    try:
+        from hapie.cloud import ProviderRegistry
+        
+        provider = ProviderRegistry.get(request.provider)
+        is_valid = await provider.validate_key(request.api_key)
+        
+        return {
+            "valid": is_valid,
+            "provider": request.provider,
+            "model_id": request.model_id or getattr(provider, "default_model", "")
+        }
+    except ValueError as e:
+        return {
+            "valid": False,
+            "error": f"Unknown provider: {request.provider}"
+        }
+    except Exception as e:
+        return {
+            "valid": False,
+            "error": str(e)
+        }

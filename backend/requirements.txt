@@ -11,7 +11,7 @@ GPUtil==1.4.0
 py-cpuinfo==9.0.0
 
 # Model inference
-llama-cpp-python==0.2.27
+llama-cpp-python==0.2.76
 huggingface-hub==0.20.3
 transformers==4.37.2
 

@@ -303,6 +303,20 @@ class ApiClient {
     });
   }
 
+  async pullIntent(data: { query: string }): Promise<{ status: string; model: Model; now_active: boolean; message: string }> {
+    return this.request('/api/models/pull-intent', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async recommendModels(data: { query: string; hardware?: any }): Promise<{ recommendations: any[] }> {
+    return this.request('/api/models/recommend', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Chat API
   async chatSingle(request: ChatRequest): Promise<ChatResponse> {
     return this.request<ChatResponse>('/api/chat/single', {

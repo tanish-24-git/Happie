@@ -68,7 +68,90 @@ export function ChatInterface() {
   }
 
   const handleSend = async () => {
-    if (!input.trim() || !selectedModel) return
+    if (!input.trim()) return
+
+    // Allow commands even if no model selected (we'll fix the disabled state separately)
+    // But for now, we follow existing flow
+    if (!selectedModel && !input.startsWith("/")) return
+
+    const inputLower = input.toLowerCase()
+
+    // DETECT COMMANDS
+    
+    // 1. /pull or "pull " command
+    if (inputLower.startsWith("/pull ") || (inputLower.startsWith("pull ") && inputLower.length < 20)) {
+        setMessages(prev => [...prev, { role: "user", content: input }])
+        setInput("")
+        setIsLoading(true)
+
+        try {
+            // Call pull-intent API
+            const response = await apiClient.pullIntent({ query: input })
+            
+            // Reload models to include new one
+            await loadModels()
+            
+            // Set as selected
+            const newModel = await apiClient.getModel(response.model.id)
+            if (newModel) {
+                setSelectedModel(newModel)
+            }
+            
+            // Success message
+            setMessages(prev => [
+                ...prev,
+                {
+                    role: "assistant", // Using assistant role to display system messages nicely
+                    content: response.message
+                }
+            ])
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Failed to pull model",
+                description: error instanceof Error ? error.message : "Unknown error"
+            })
+            setMessages(prev => [...prev, { role: "assistant", content: `[ERROR] ${error instanceof Error ? error.message : "Unknown error"}` }])
+        } finally {
+            setIsLoading(false)
+        }
+        return
+    }
+
+    // 2. /recommend or /best command
+    if (inputLower.startsWith("/best ") || inputLower.startsWith("/recommend ") || inputLower.startsWith("best ") || inputLower.startsWith("recommend ")) {
+        setMessages(prev => [...prev, { role: "user", content: input }])
+        setInput("")
+        setIsLoading(true)
+
+        try {
+            const response = await apiClient.recommendModels({ query: input })
+            
+            if (response.recommendations && response.recommendations.length > 0) {
+                // Format recommendations
+                const recText = response.recommendations.map((rec: any, idx: number) => 
+                    `### ${idx + 1}. ${rec.name}\n${rec.reasoning}\n\n**Performance**: ${rec.performance.speed}, ${rec.performance.context} context\n\nTo install, type: **pull ${rec.model_id}**`
+                ).join("\n\n---\n\n")
+                
+                setMessages(prev => [...prev, { role: "assistant", content: `Here are my recommendations:\n\n${recText}` }])
+            } else {
+                setMessages(prev => [...prev, { role: "assistant", content: "I couldn't find any specific recommendations for that." }])
+            }
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Failed to get recommendations",
+                description: error instanceof Error ? error.message : "Unknown error"
+            })
+            setMessages(prev => [...prev, { role: "assistant", content: `[ERROR] Unable to get recommendations.` }])
+        } finally {
+            setIsLoading(false)
+        }
+        return
+    }
+
+    // NORMAL CHAT FLOW
+    if (!selectedModel) return
 
     const userMessage: ChatMessage = { role: "user", content: input }
     setMessages(prev => [...prev, userMessage])
@@ -235,7 +318,7 @@ export function ChatInterface() {
               <div className={cn("max-w-[80%] space-y-2", message.role === "user" && "text-right")}>
                 <div
                   className={cn(
-                    "rounded-lg px-4 py-2 leading-relaxed",
+                    "rounded-lg px-4 py-2 leading-relaxed whitespace-pre-wrap",
                     message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted/30 border",
                   )}
                 >
@@ -307,9 +390,9 @@ export function ChatInterface() {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={selectedModel ? "Ask the active model..." : "Select a model first..."}
+            placeholder={selectedModel ? "Ask the active model..." : "Select a model or type /pull..."}
             className="min-h-[60px] pr-12 resize-none bg-muted/20 border-muted"
-            disabled={!selectedModel || isLoading}
+            disabled={isLoading}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
@@ -321,7 +404,7 @@ export function ChatInterface() {
             size="icon"
             className="absolute bottom-2 right-2 h-8 w-8 transition-transform active:scale-95"
             onClick={handleSend}
-            disabled={!input.trim() || !selectedModel || isLoading}
+            disabled={!input.trim() || isLoading}
           >
             <Send className="h-4 w-4" />
           </Button>

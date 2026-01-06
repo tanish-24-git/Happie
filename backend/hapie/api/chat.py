@@ -21,6 +21,68 @@ detector = HardwareDetector()
 policy_engine = PolicyEngine()
 
 
+def build_system_prompt(conversation_id: Optional[str] = None) -> str:
+    """
+    Build comprehensive system prompt with hardware/model context.
+    
+    This prevents hallucinations by giving the model awareness of:
+    - System hardware (CPU, GPU, RAM)
+    - Active policy and configuration
+    - Available models
+    - Conversation history
+    - Available commands
+    """
+    # Hardware detection
+    capability = detector.detect()
+    policy = policy_engine.evaluate(capability)
+    
+    # Model information
+    models = model_manager.list_models()
+    active = model_manager.get_active_model()
+    
+    # Conversation history (last 8 turns)
+    history = ""
+    if conversation_id:
+        db = get_db()
+        session = db.get_session()
+        try:
+            messages = session.query(Message).filter(
+                Message.conversation_id == conversation_id
+            ).order_by(Message.created_at.desc()).limit(8).all()
+            messages.reverse()  # Chronological order
+            history = "\n".join([f"{m.role.upper()}: {m.content}" for m in messages])
+        finally:
+            session.close()
+    
+    # Format system prompt
+    system_prompt = f"""You are HAPIE v0.1.0 - Hardware-Aware AI Inference Engine.
+
+LIVE SYSTEM ({capability.total_ram_gb:.1f}GB RAM):
+CPU: {capability.cpu_brand} ({capability.cpu_cores}C/{capability.cpu_threads}T)
+GPU: {capability.gpu_vendor.value} ({capability.gpu_vram_gb}GB VRAM)
+Free RAM: {capability.available_ram_gb:.1f}GB
+
+POLICY:
+Backend: {policy.backend.value} | Context: {policy.max_context_length}
+Quant: {policy.quantization_bits}-bit | GPU Layers: {policy.gpu_layers}
+Active Model: {active['name'] if active else 'None'}
+
+COMMANDS:
+/pull {{name}} → Auto-pull & activate (phi3, gemma, qwen3b...)
+/compare {{model1}} {{model2}} → Benchmark table
+/best {{task}} → Hardware-optimized recs (coding, rags, chat...)
+
+AVAILABLE MODELS ({len(models)}): {', '.join(m['name'] for m in models[:5])}{'...' if len(models) > 5 else ''}
+
+Recommend GGUF from HuggingFace. Be hardware-specific.
+"""
+    
+    if history:
+        system_prompt += f"\n\nCONVERSATION HISTORY:\n{history}"
+    
+    return system_prompt
+
+
 class ChatRequest(BaseModel):
     """Single model chat request"""
     prompt: str
@@ -112,9 +174,13 @@ async def single_chat(request: ChatRequest):
         
         # Generate response
         try:
+            # Build enhanced prompt with system context
+            system_prompt = build_system_prompt(request.conversation_id)
+            full_prompt = f"{system_prompt}\n\nHuman: {request.prompt}\n\nAssistant:"
+
             result = inference_engine.generate(
                 model_id=model_id,
-                prompt=request.prompt,
+                prompt=full_prompt,
                 max_tokens=request.max_tokens,
                 temperature=request.temperature,
                 top_p=request.top_p,

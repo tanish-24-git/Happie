@@ -201,3 +201,62 @@ async def validate_cloud_model(request: ValidateCloudModelRequest):
             "valid": False,
             "error": str(e)
         }
+@router.post("/pull-intent")
+async def pull_model_intent(request: dict):
+    """
+    Natural language model pulling.
+    
+    Parses queries like:
+    - "pull phi3" → Downloads Phi-3 Mini
+    - "get gemma" → Downloads Gemma 2B
+    - {"query": "phi3", "confirm": true} → Auto-pull
+    """
+    query = request.get("query", "")
+    
+    # Import recommendation engine
+    from hapie.api.recommend import MODEL_CATALOG, TASK_MAP
+    
+    query_lower = query.lower().replace("pull ", "").replace("get ", "").strip()
+    
+    # Map to model
+    model_id = None
+    for mid in MODEL_CATALOG.keys():
+        if mid in query_lower:
+            model_id = mid
+            break
+    
+    # Check task map
+    if not model_id and query_lower in TASK_MAP:
+        model_id = TASK_MAP[query_lower]
+    
+    if not model_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not parse model from query: '{query}'"
+        )
+    
+    model_info = MODEL_CATALOG[model_id]
+    
+    # Pull model
+    try:
+        pulled_model = model_manager.pull_huggingface_model(
+            repo_id=model_info["repo_id"],
+            filename=model_info["filename"],
+            model_id=model_id,
+            name=model_info["name"]
+        )
+        
+        # Set as active
+        model_manager.set_active_model(pulled_model["id"])
+        
+        return {
+            "status": "pulled",
+            "model": pulled_model,
+            "now_active": True,
+            "message": f"✅ {model_info['name']} pulled & activated!"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to pull model: {str(e)}"
+        )

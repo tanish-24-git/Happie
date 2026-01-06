@@ -201,62 +201,154 @@ async def validate_cloud_model(request: ValidateCloudModelRequest):
             "valid": False,
             "error": str(e)
         }
-@router.post("/pull-intent")
-async def pull_model_intent(request: dict):
-    """
-    Natural language model pulling.
-    
-    Parses queries like:
-    - "pull phi3" → Downloads Phi-3 Mini
-    - "get gemma" → Downloads Gemma 2B
-    - {"query": "phi3", "confirm": true} → Auto-pull
-    """
-    query = request.get("query", "")
-    
-    # Import recommendation engine
-    from hapie.api.recommend import MODEL_CATALOG, TASK_MAP
-    
-    query_lower = query.lower().replace("pull ", "").replace("get ", "").strip()
-    
-    # Map to model
-    model_id = None
-    for mid in MODEL_CATALOG.keys():
-        if mid in query_lower:
-            model_id = mid
-            break
-    
-    # Check task map
-    if not model_id and query_lower in TASK_MAP:
-        model_id = TASK_MAP[query_lower]
-    
-    if not model_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Could not parse model from query: '{query}'"
-        )
-    
-    model_info = MODEL_CATALOG[model_id]
-    
-    # Pull model
+class PullCustomModelRequest(BaseModel):
+    repo_id: str  # e.g., "bartowski/Qwen2-Deita-500m-GGUF"
+    filename: str  # e.g., "Qwen2-Deita-500m-Q4_K_M.gguf"
+    model_id: Optional[str] = None
+    name: Optional[str] = None
+
+
+class PullIntentResponse(BaseModel):
+    status: str
+    model: Dict
+    now_active: bool
+    message: str
+
+
+@router.post("/pull-custom", response_model=PullIntentResponse)
+async def pull_custom_model(request: PullCustomModelRequest):
+    """Pull ANY GGUF model from HuggingFace without MODELCATALOG restriction"""
     try:
+        from hapie.hardware import HardwareDetector
+        
+        detector = HardwareDetector()
+        
+        model_id = request.model_id or f"{request.repo_id.split('/')[-1].lower()}"
+        name = request.name or request.filename.replace('.gguf', '')
+        
+        # Check hardware capability (optional, for logging or future checks)
+        detector.detect()
+        
         pulled_model = model_manager.pull_huggingface_model(
-            repo_id=model_info["repo_id"],
-            filename=model_info["filename"],
+            repo_id=request.repo_id,
+            filename=request.filename,
             model_id=model_id,
-            name=model_info["name"]
+            name=name
         )
         
-        # Set as active
-        model_manager.set_active_model(pulled_model["id"])
+        model_manager.set_active_model(model_id)
         
         return {
-            "status": "pulled",
+            "status": "success",
             "model": pulled_model,
             "now_active": True,
-            "message": f"✅ {model_info['name']} pulled & activated!"
+            "message": f"Custom model '{name}' pulled and activated!"
         }
+    
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to pull model: {str(e)}"
+            detail=f"Failed to pull custom model: {str(e)}"
         )
+
+
+@router.post("/pull-intent", response_model=PullIntentResponse)
+async def pull_model_intent(request: dict):
+    """
+    Smart model pulling with 3-tier fallback:
+    Tier 1: MODELCATALOG
+    Tier 2: TASKMAP shortcuts
+    Tier 3: Custom syntax (repo_id:filename)
+    """
+    from hapie.api.recommend import MODEL_CATALOG, TASK_MAP
+    
+    query = request.get("query", "").lower().replace("hapie pull ", "").replace("hapie ", "").strip()
+    
+    # TIER 1: MODELCATALOG
+    model_id = None
+    for mid in MODEL_CATALOG.keys():
+        if mid in query:
+            model_id = mid
+            break
+    
+    if model_id:
+        model_info = MODEL_CATALOG[model_id]
+        try:
+            pulled_model = model_manager.pull_huggingface_model(
+                repo_id=model_info["repo_id"],
+                filename=model_info["filename"],
+                model_id=model_id,
+                name=model_info["name"]
+            )
+            model_manager.set_active_model(model_id)
+            return {
+                "status": "success",
+                "model": pulled_model,
+                "now_active": True,
+                "message": f"{model_info['name']} pulled and activated!"
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to pull model: {str(e)}")
+    
+    # TIER 2: TASKMAP
+    if query in TASK_MAP:
+        model_id = TASK_MAP[query]
+        model_info = MODEL_CATALOG[model_id]
+        try:
+            pulled_model = model_manager.pull_huggingface_model(
+                repo_id=model_info["repo_id"],
+                filename=model_info["filename"],
+                model_id=model_id,
+                name=model_info["name"]
+            )
+            model_manager.set_active_model(model_id)
+            return {
+                "status": "success",
+                "model": pulled_model,
+                "now_active": True,
+                "message": f"{model_info['name']} pulled via '{query}' shortcut!"
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to pull model: {str(e)}")
+    
+    # TIER 3: Custom syntax (repo_id:filename)
+    if ":" in query:
+        try:
+            parts = query.split(":", 1)
+            repo_id = parts[0].strip()
+            filename = parts[1].strip()
+            
+            if not repo_id or not filename:
+                raise ValueError("Both repo_id and filename required")
+            
+            model_id = f"{repo_id.split('/')[-1].lower()}"
+            name = filename.replace('.gguf', '')
+            
+            pulled_model = model_manager.pull_huggingface_model(
+                repo_id=repo_id,
+                filename=filename,
+                model_id=model_id,
+                name=name
+            )
+            model_manager.set_active_model(model_id)
+            
+            return {
+                "status": "success",
+                "model": pulled_model,
+                "now_active": True,
+                "message": f"Custom model '{name}' pulled and activated!"
+            }
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid custom model syntax. Use format: 'repo_id:filename' Example: 'bartowski/Qwen2-Deita-500m-GGUF:Qwen2-Deita-500m-Q4_K_M.gguf'"
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to pull custom model: {str(e)}")
+    
+    # TIER 4: Not found
+    available = ", ".join(list(MODEL_CATALOG.keys())[:5])
+    raise HTTPException(
+        status_code=400,
+        detail=f"Could not parse model. Available: {available}... or use 'repo_id:filename'"
+    )

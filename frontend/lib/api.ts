@@ -245,6 +245,10 @@ class ApiClient {
     });
   }
 
+  async getSystemMetrics(): Promise<{ cpu_percent: number; memory_percent: number; memory_used_gb: number; memory_total_gb: number }> {
+    return this.request('/api/system/metrics');
+  }
+
   // Models API
   async listModels(): Promise<Model[]> {
     return this.request<Model[]>('/api/models/');
@@ -261,6 +265,13 @@ class ApiClient {
   async setActiveModel(modelId: string): Promise<{ status: string; active_model: string }> {
     return this.request(`/api/models/active/${modelId}`, {
       method: 'POST',
+    });
+  }
+
+  async pullCustomModel(data: { repo_id: string; filename: string; model_id?: string; name?: string }): Promise<any> {
+    return this.request('/api/models/pull-custom', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 

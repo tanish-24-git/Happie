@@ -12,6 +12,30 @@ from datetime import datetime
 
 router = APIRouter()
 
+@router.get("/metrics")
+async def get_system_metrics():
+    """Get real-time system metrics (CPU, memory, disk)"""
+    try:
+        import psutil
+        from datetime import datetime
+        
+        vm = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        return {
+            "cpu_percent": psutil.cpu_percent(interval=None),
+            "memory_percent": vm.percent,
+            "disk_percent": disk.percent,
+            "memory_used_gb": round(vm.used / (1024**3), 2),
+            "memory_total_gb": round(vm.total / (1024**3), 2),
+            "timestamp": int(datetime.now().timestamp())
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get system metrics: {str(e)}"
+        )
+
 # Global instances
 detector = HardwareDetector()
 policy_engine = PolicyEngine()

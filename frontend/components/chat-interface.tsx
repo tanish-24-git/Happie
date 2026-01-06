@@ -78,8 +78,8 @@ export function ChatInterface() {
 
     // DETECT COMMANDS
     
-    // 1. /pull or "pull " command
-    if (inputLower.startsWith("/pull ") || (inputLower.startsWith("pull ") && inputLower.length < 20)) {
+    // 1. /pull or "pull " or "hapie pull" command
+    if (inputLower.startsWith("/pull ") || inputLower.startsWith("pull ") || inputLower.startsWith("hapie pull ")) {
         setMessages(prev => [...prev, { role: "user", content: input }])
         setInput("")
         setIsLoading(true)
@@ -119,7 +119,7 @@ export function ChatInterface() {
     }
 
     // 2. /recommend or /best command
-    if (inputLower.startsWith("/best ") || inputLower.startsWith("/recommend ") || inputLower.startsWith("best ") || inputLower.startsWith("recommend ")) {
+    if (inputLower.startsWith("/best ") || inputLower.startsWith("/recommend ") || inputLower.startsWith("best ") || inputLower.startsWith("recommend ") || inputLower.startsWith("hapie recommend ")) {
         setMessages(prev => [...prev, { role: "user", content: input }])
         setInput("")
         setIsLoading(true)
@@ -390,7 +390,7 @@ export function ChatInterface() {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={selectedModel ? "Ask the active model..." : "Select a model or type /pull..."}
+            placeholder={selectedModel ? "Ask anything… or type: hapie pull phi3, best coding model, compare qwen tinyllama" : "Select a model or type: hapie pull phi3..."}
             className="min-h-[60px] pr-12 resize-none bg-muted/20 border-muted"
             disabled={isLoading}
             onKeyDown={(e) => {

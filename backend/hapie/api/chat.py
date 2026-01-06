@@ -27,10 +27,9 @@ def build_system_prompt(conversation_id: Optional[str] = None) -> str:
     
     This prevents hallucinations by giving the model awareness of:
     - System hardware (CPU, GPU, RAM)
-    - Active policy and configuration
+    - Active policy and execution backend
     - Available models
     - Conversation history
-    - Available commands
     """
     # Hardware detection
     capability = detector.detect()
@@ -40,7 +39,7 @@ def build_system_prompt(conversation_id: Optional[str] = None) -> str:
     models = model_manager.list_models()
     active = model_manager.get_active_model()
     
-    # Conversation history (last 8 turns)
+    # Conversation history (last 6 turns to align with user constraints)
     history = ""
     if conversation_id:
         db = get_db()
@@ -48,36 +47,37 @@ def build_system_prompt(conversation_id: Optional[str] = None) -> str:
         try:
             messages = session.query(Message).filter(
                 Message.conversation_id == conversation_id
-            ).order_by(Message.created_at.desc()).limit(8).all()
+            ).order_by(Message.created_at.desc()).limit(6).all()
             messages.reverse()  # Chronological order
             history = "\n".join([f"{m.role.upper()}: {m.content}" for m in messages])
         finally:
             session.close()
     
     # Format system prompt
-    system_prompt = f"""You are HAPIE v0.1.0 - Hardware-Aware AI Inference Engine.
+    # We keep the system section stable as requested
+    system_prompt = f"""You are HAPIE, an intelligent hardware-aware AI assistant running locally on this system.
 
-LIVE SYSTEM ({capability.total_ram_gb:.1f}GB RAM):
-CPU: {capability.cpu_brand} ({capability.cpu_cores}C/{capability.cpu_threads}T)
-GPU: {capability.gpu_vendor.value} ({capability.gpu_vram_gb}GB VRAM)
-Free RAM: {capability.available_ram_gb:.1f}GB
+SYSTEM CONTEXT:
+CPU: {capability.cpu_brand} ({capability.cpu_cores} Cores / {capability.cpu_threads} Threads)
+RAM: {capability.available_ram_gb:.1f}GB available / {capability.total_ram_gb:.1f}GB total
+GPU: {capability.gpu_vendor.value.upper()} ({capability.gpu_vram_gb}GB VRAM)
+Backend: {policy.backend.value.upper()} | Context Limit: {policy.max_context_length}
+Active Model: {active['name'] if active else 'None'} ({active.get('provider', 'local') if active else 'N/A'})
 
-POLICY:
-Backend: {policy.backend.value} | Context: {policy.max_context_length}
-Quant: {policy.quantization_bits}-bit | GPU Layers: {policy.gpu_layers}
-Active Model: {active['name'] if active else 'None'}
+AVAILABLE MODELS ({len(models)}):
+{', '.join(m['name'] for m in models[:5])}{'...' if len(models) > 5 else ''}
 
-COMMANDS:
-/pull {{name}} → Auto-pull & activate (phi3, gemma, qwen3b...)
-/compare {{model1}} {{model2}} → Benchmark table
-/best {{task}} → Hardware-optimized recs (coding, rags, chat...)
+INSTRUCTIONS:
+1. Answer general questions (coding, reasoning, chat) normally and helpfully.
+2. You have FULL awareness of the local hardware. If asked about the system, use the data above.
+3. For model recommendations, suggest GGUF models from HuggingFace that fit the available RAM.
+4. When recommending, give the user the exact command: "hapie pull <model-name>" or "pull <model-name>".
 
-AVAILABLE MODELS ({len(models)}): {', '.join(m['name'] for m in models[:5])}{'...' if len(models) > 5 else ''}
-
-Recommend GGUF from HuggingFace. Be hardware-specific.
+You are helpful, precise, and hardware-aware.
 """
     
     if history:
+        # Separate history clearly
         system_prompt += f"\n\nCONVERSATION HISTORY:\n{history}"
     
     return system_prompt

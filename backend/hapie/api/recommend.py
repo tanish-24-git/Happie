@@ -38,6 +38,16 @@ MODEL_CATALOG = {
         "use_cases": ["rags", "long-context", "retrieval"],
         "min_ram_gb": 2,
         "speed_rating": 5
+    },
+    "qwen05b": {
+        "repo_id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+        "filename": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "name": "Qwen 2.5 0.5B Instruct",
+        "size_mb": 400,
+        "context": "32K",
+        "use_cases": ["fast", "tiny", "embedded"],
+        "min_ram_gb": 1,
+        "speed_rating": 10
     }
 }
 
@@ -51,7 +61,8 @@ TASK_MAP = {
     "retrieval": "qwen3b",
     "fast": "gemma",
     "quick": "gemma",
-    "lightweight": "gemma"
+    "lightweight": "gemma",
+    "tiny": "qwen05b"
 }
 
 
@@ -90,7 +101,8 @@ def build_recommendation(
         f"{model_info['name']} ({model_info['size_mb']/1024:.1f}GB) "
         f"{'fits' if fits else 'EXCEEDS'} available {available_ram:.1f}GB RAM. "
         f"Estimated {speed_estimate} t/s on your hardware. "
-        f"Best for: {', '.join(model_info['use_cases'])}."
+        f"Best for: {', '.join(model_info['use_cases'])}.\n\n"
+        f"**Command:** `hapie pull {model_id}`"
     )
     
     return {
@@ -188,3 +200,89 @@ async def recommend_models(request: RecommendRequest):
     # Default: return top 3 models
     ranked = rank_models_by_hardware(hardware)
     return {"recommendations": ranked[:3]}
+
+
+class PullIntentResponse(BaseModel):
+    status: str
+    model: Dict
+    now_active: bool
+    message: str
+
+
+@router.post("/pull-intent", response_model=PullIntentResponse)
+async def pull_intent(request: RecommendRequest):
+    """
+    Execute intent to pull a model.
+    
+    Parses natural language like "pull phi3" or uses explicit model ID.
+    Auto-detects closest matching model from catalog.
+    """
+    from hapie.models import ModelManager
+    model_manager = ModelManager()
+    
+    query = request.query.lower().replace("hapie", "").strip()
+    
+    # 1. Identify target model
+    target_model_id = None
+    target_info = None
+    
+    # Check exact match or alias
+    for model_id, info in MODEL_CATALOG.items():
+        if model_id in query or info["name"].lower() in query:
+            target_model_id = model_id
+            target_info = info
+            break
+            
+    # Check shortcuts
+    if not target_model_id:
+        for task, model_id in TASK_MAP.items():
+            if task in query:
+                target_model_id = model_id
+                target_info = MODEL_CATALOG[model_id]
+                break
+    
+    if not target_model_id:
+        # Default fallback
+        available = ", ".join(MODEL_CATALOG.keys())
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Could not identify model. Available: {available}. Try 'pull phi3'."
+        )
+
+    # 2. Check if already installed
+    existing = model_manager.get_model(target_model_id)
+    if existing:
+        # Just activate it
+        model_manager.set_active_model(target_model_id)
+        return {
+            "status": "success",
+            "model": existing,
+            "now_active": True,
+            "message": f"Model {existing['name']} is already installed. Switched active model to {existing['name']}."
+        }
+        
+    # 3. Pull the model
+    try:
+        model = model_manager.pull_huggingface_model(
+            repo_id=target_info["repo_id"],
+            filename=target_info["filename"],
+            model_id=target_model_id,
+            name=target_info["name"]
+        )
+        
+        # 4. Activate
+        model_manager.set_active_model(target_model_id)
+        
+        # 5. Get hardware stats for message
+        capability = HardwareDetector().detect()
+        speed_est = target_info["speed_rating"] * 10
+        
+        return {
+            "status": "success",
+            "model": model,
+            "now_active": True,
+            "message": f"Successfully pulled and activated {model['name']}.\n\nHardware estimates:\n- Speed: ~{speed_est} t/s\n- RAM: Fits in {capability.total_ram_gb}GB\n\nYou can now ask questions!"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to pull model: {str(e)}")

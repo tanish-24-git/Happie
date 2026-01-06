@@ -20,19 +20,31 @@ export function InfoPanel() {
       try {
         const info = await apiClient.getSystemInfo()
         setSystemInfo(info)
-        
-        // Simulate CPU load from RAM usage
-        const ramUsagePercent = ((info.capability.total_ram_gb - info.capability.available_ram_gb) / info.capability.total_ram_gb) * 100
-        setCpuLoad(Math.min(ramUsagePercent * 0.5, 100)) // Rough approximation
       } catch (error) {
         console.error("Failed to load system info:", error)
       }
     }
 
-    loadSystemInfo()
-    const interval = setInterval(loadSystemInfo, 2000)
+    const loadMetrics = async () => {
+      try {
+        const metrics = await apiClient.getSystemMetrics()
+        setCpuLoad(metrics.cpu_percent)
+      } catch (error) {
+        // Fallback or ignore
+      }
+    }
 
-    return () => clearInterval(interval)
+    loadSystemInfo()
+    loadMetrics()
+    
+    // Poll metrics more frequently (3s) than full info refresh (now 5s to reduce load)
+    const infoInterval = setInterval(loadSystemInfo, 5000)
+    const metricsInterval = setInterval(loadMetrics, 3000)
+
+    return () => {
+      clearInterval(infoInterval)
+      clearInterval(metricsInterval)
+    }
   }, [])
 
   if (!systemInfo) {
@@ -58,7 +70,11 @@ export function InfoPanel() {
   const { capability, policy } = systemInfo
 
   // Calculate usage percentages
-  const ramUsagePercent = ((capability.total_ram_gb - capability.available_ram_gb) / capability.total_ram_gb) * 100
+  const totalRam = capability.total_ram_gb
+  const availableRam = capability.available_ram_gb
+  const usedRam = totalRam - availableRam
+  const ramUsagePercent = (usedRam / totalRam) * 100
+  
   const vramUsagePercent = capability.gpu_vram_gb 
     ? Math.min((capability.gpu_vram_gb * 0.3) / capability.gpu_vram_gb * 100, 100) // Estimate
     : 0
@@ -148,12 +164,12 @@ export function InfoPanel() {
                         <Cpu className="h-3 w-3" />
                         <span>CPU Load</span>
                       </div>
-                      <span className="font-mono">{cpuLoad.toFixed(0)}%</span>
+                      <span className="font-mono">{cpuLoad.toFixed(1)}%</span>
                     </div>
                     <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                       <div 
-                        className="h-full bg-primary transition-all" 
-                        style={{ width: `${cpuLoad}%` }}
+                        className={`h-full transition-all ${cpuLoad > 80 ? 'bg-red-500' : cpuLoad > 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                        style={{ width: `${Math.min(cpuLoad, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -186,7 +202,7 @@ export function InfoPanel() {
                       <span>RAM Usage</span>
                     </div>
                     <span className="font-mono">
-                      {(capability.total_ram_gb - capability.available_ram_gb).toFixed(1)} / {capability.total_ram_gb.toFixed(1)} GB
+                      {usedRam.toFixed(1)} / {totalRam.toFixed(1)} GB
                     </span>
                   </div>
                   <div className="h-1 w-full overflow-hidden rounded-full bg-muted">

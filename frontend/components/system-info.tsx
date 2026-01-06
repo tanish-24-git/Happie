@@ -113,7 +113,9 @@ export function SystemInfo() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold font-mono">{capability.total_ram_gb.toFixed(1)} GB</div>
-                <p className="text-[10px] text-muted-foreground mt-1">Available: {capability.available_ram_gb.toFixed(1)} GB</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Used: {(capability.total_ram_gb - capability.available_ram_gb).toFixed(1)} GB • Free: {capability.available_ram_gb.toFixed(1)} GB
+                </p>
               </CardContent>
             </Card>
           </div>

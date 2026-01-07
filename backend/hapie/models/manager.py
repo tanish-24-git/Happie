@@ -285,6 +285,7 @@ class ModelManager:
                 "status": "downloading", 
                 "modelId": model_id, 
                 "totalSize": total_size,
+                "downloaded": int((fake_progress / 100) * total_size),
                 "progress": fake_progress, 
                 "speed": "Downloading...", 
                 "eta": "..."

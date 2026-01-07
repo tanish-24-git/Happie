@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Send, User, Bot, ChevronDown, Monitor, Cloud, Zap, DollarSign, AlertCircle } from "lucide-react"
+import { Send, User, Bot, ChevronDown, Monitor, Cloud, Zap, DollarSign, AlertCircle, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,15 @@ interface ChatMessage {
     estimated_cost_usd?: number
   }
   id?: string
-  actions?: { label: string; onClick: () => void }[]
+  actions?: { label: string; icon?: React.ReactNode; onClick: () => void }[]
+  downloadProgress?: {
+    modelId: string
+    progress: number
+    totalSize: number
+    downloaded: number // current downloaded bytes
+    speed: string
+    eta: string
+  }
 }
 
 export function ChatInterface() {
@@ -125,26 +134,35 @@ export function ChatInterface() {
                             if (msg.id !== downloadMsgId) return msg
                             
                             if (data.status === "error") {
-                                return { ...msg, content: `❌ Error: ${data.error}` }
+                                return { ...msg, content: `Error: ${data.error}`, id: undefined }
                             }
                             
                             if (data.status === "complete") {
-                                return { ...msg, content: `✅ **${data.modelId}** downloaded successfully!` }
+                                return { ...msg, content: `**${data.modelId}** downloaded successfully!`, downloadProgress: undefined, actions: [] }
                             }
                             
                             // Progress bar UI
                             const progress = Math.round(data.progress || 0)
-                            const sizeGB = (data.totalSize / 1024 / 1024 / 1024).toFixed(1)
                             const speed = data.speed || "0 MB/s"
                             const eta = data.eta || "?"
                             
                             return {
                                 ...msg,
-                                content: `⬇️ **Downloading ${data.modelId}**\n` +
-                                         `> **${progress}%** of ${sizeGB}GB • ${speed} • ETA: ${eta}\n` +
-                                         `> [${'█'.repeat(Math.floor(progress / 5))}${'░'.repeat(20 - Math.floor(progress / 5))}]`,
+                                content: `Pulling **${data.modelId}**`,
+                                downloadProgress: {
+                                    modelId: data.modelId,
+                                    progress: progress,
+                                    totalSize: data.totalSize,
+                                    downloaded: data.downloaded || 0,
+                                    speed: speed,
+                                    eta: eta
+                                },
                                 actions: [
-                                    { label: "Stop", onClick: () => handleCancelDownload(data.modelId, downloadMsgId) }
+                                    { 
+                                        label: "Stop", 
+                                        icon: <X className="h-4 w-4" />, 
+                                        onClick: () => handleCancelDownload(data.modelId, downloadMsgId) 
+                                    }
                                 ]
                             }
                         }))
@@ -387,6 +405,35 @@ export function ChatInterface() {
                   )}
                 >
                   {message.content}
+                  {message.downloadProgress && (
+                    <div className="mt-4 space-y-2 min-w-[280px]">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Progress value={message.downloadProgress.progress} className="h-1.5" />
+                        </div>
+                        {message.actions?.map((action, idx) => (
+                           <Button 
+                             key={idx} 
+                             size="sm" 
+                             variant="ghost" 
+                             className="h-6 w-6 rounded-full hover:bg-muted-foreground/10 p-0" 
+                             onClick={action.onClick}
+                             title={action.label}
+                           >
+                             {action.icon}
+                           </Button>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                        <span>
+                            {(message.downloadProgress.downloaded / (1024 * 1024 * 1024)).toFixed(2)} GB / 
+                            {(message.downloadProgress.totalSize / (1024 * 1024 * 1024)).toFixed(2)} GB 
+                            ({message.downloadProgress.progress}%)
+                        </span>
+                        <span>{message.downloadProgress.speed} • {message.downloadProgress.eta} left</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {message.role === "assistant" && message.metrics && (
                   <div className="flex items-center gap-2 px-1 text-[10px] text-muted-foreground">
@@ -413,16 +460,17 @@ export function ChatInterface() {
                     )}
                   </div>
                 )}
-                {message.actions && message.actions.length > 0 && (
+                {message.actions && message.actions.length > 0 && !message.downloadProgress && (
                     <div className="flex gap-2 mt-2">
                         {message.actions.map((action, idx) => (
                             <Button 
                                 key={idx} 
                                 size="sm" 
                                 variant="outline" 
-                                className="h-7 text-[10px] px-2"
+                                className="h-7 text-[10px] px-2 gap-1.5 border-muted-foreground/20 hover:bg-muted"
                                 onClick={action.onClick}
                             >
+                                {action.icon}
                                 {action.label}
                             </Button>
                         ))}

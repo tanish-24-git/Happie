@@ -27,6 +27,8 @@ interface ChatMessage {
     provider?: string
     estimated_cost_usd?: number
   }
+  id?: string
+  actions?: { label: string; onClick: () => void }[]
 }
 
 export function ChatInterface() {
@@ -78,40 +80,89 @@ export function ChatInterface() {
 
     // DETECT COMMANDS
     
-    // 1. /pull or "pull " or "hapie pull" command
+    // 1. /pull command with STREAMING
     if (inputLower.startsWith("/pull ") || inputLower.startsWith("pull ") || inputLower.startsWith("hapie pull ")) {
-        setMessages(prev => [...prev, { role: "user", content: input }])
+        const cmdContent = input // Store for display
         setInput("")
         setIsLoading(true)
+        
+        // Add user message
+        setMessages(prev => [...prev, { role: "user", content: cmdContent }])
+        
+        // Add temporary "Downloading..." message that we will update
+        const downloadMsgId = Date.now().toString()
+        setMessages(prev => [...prev, { 
+            role: "assistant", 
+            content: "Initializing download...",
+            id: downloadMsgId // Track this message
+        }])
 
         try {
-            // Call pull-intent API
-            const response = await apiClient.pullIntent({ query: input })
+            const response = await fetch("http://localhost:8000/api/models/pull-stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: cmdContent })
+            })
+
+            const reader = response.body?.getReader()
+            const decoder = new TextDecoder()
             
-            // Reload models to include new one
-            await loadModels()
-            
-            // Set as selected
-            const newModel = await apiClient.getModel(response.model.id)
-            if (newModel) {
-                setSelectedModel(newModel)
-            }
-            
-            // Success message
-            setMessages(prev => [
-                ...prev,
-                {
-                    role: "assistant", // Using assistant role to display system messages nicely
-                    content: response.message
+            if (!reader) throw new Error("No stream reader")
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                
+                const chunk = decoder.decode(value, { stream: true })
+                const lines = chunk.split("\n").filter(line => line.trim() !== "")
+                
+                for (const line of lines) {
+                    try {
+                        const data = JSON.parse(line)
+                        
+                        // Update the download message
+                        setMessages(prev => prev.map(msg => {
+                            if (msg.id !== downloadMsgId) return msg
+                            
+                            if (data.status === "error") {
+                                return { ...msg, content: `❌ Error: ${data.error}` }
+                            }
+                            
+                            if (data.status === "complete") {
+                                return { ...msg, content: `✅ **${data.modelId}** downloaded successfully!` }
+                            }
+                            
+                            // Progress bar UI
+                            const progress = Math.round(data.progress || 0)
+                            const sizeGB = (data.totalSize / 1024 / 1024 / 1024).toFixed(1)
+                            const speed = data.speed || "0 MB/s"
+                            const eta = data.eta || "?"
+                            
+                            return {
+                                ...msg,
+                                content: `⬇️ **Downloading ${data.modelId}**\n` +
+                                         `> **${progress}%** of ${sizeGB}GB • ${speed} • ETA: ${eta}\n` +
+                                         `> [${'█'.repeat(Math.floor(progress / 5))}${'░'.repeat(20 - Math.floor(progress / 5))}]`,
+                                actions: [
+                                    { label: "Stop", onClick: () => handleCancelDownload(data.modelId, downloadMsgId) }
+                                ]
+                            }
+                        }))
+                        
+                        if (data.status === "complete") {
+                            await loadModels() // Refresh list
+                        }
+                    } catch (e) {
+                        console.error("Parse error", e)
+                    }
                 }
-            ])
+            }
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Failed to pull model",
-                description: error instanceof Error ? error.message : "Unknown error"
+                title: "Download Failed",
+                description: error instanceof Error ? error.message : "Network error"
             })
-            setMessages(prev => [...prev, { role: "assistant", content: `[ERROR] ${error instanceof Error ? error.message : "Unknown error"}` }])
         } finally {
             setIsLoading(false)
         }
@@ -192,6 +243,19 @@ export function ChatInterface() {
       ])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleCancelDownload = async (modelId: string, msgId: string) => {
+    try {
+        await fetch("http://localhost:8000/api/models/pull/cancel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model_id: modelId })
+        })
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "🛑 Download cancelled.", actions: [] } : m))
+    } catch (e) {
+        console.error("Cancel failed", e)
     }
   }
 
@@ -348,6 +412,21 @@ export function ChatInterface() {
                       </>
                     )}
                   </div>
+                )}
+                {message.actions && message.actions.length > 0 && (
+                    <div className="flex gap-2 mt-2">
+                        {message.actions.map((action, idx) => (
+                            <Button 
+                                key={idx} 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7 text-[10px] px-2"
+                                onClick={action.onClick}
+                            >
+                                {action.label}
+                            </Button>
+                        ))}
+                    </div>
                 )}
               </div>
               {message.role === "user" && (

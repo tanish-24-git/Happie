@@ -10,21 +10,20 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 
 // MODELS are now fetched from API
-// const MODELS = [ ... ] 
+import apiClient from "@/lib/api"
 
 export function ModelComparison() {
   const [prompt, setPrompt] = React.useState("")
   const [selectedModels, setSelectedModels] = React.useState<string[]>([])
   const [availableModels, setAvailableModels] = React.useState<any[]>([])
-  const [started, setStarted] = React.useState(false) // To track if loading happened
+  const [started, setStarted] = React.useState(false) 
   
   const [isRunning, setIsRunning] = React.useState(false)
   const [results, setResults] = React.useState<any[]>([])
 
   React.useEffect(() => {
     // Fetch models from API
-    fetch("http://localhost:8000/api/models/")
-      .then(res => res.json())
+    apiClient.listModels()
       .then(data => {
         setAvailableModels(data)
         // Default select first 2
@@ -42,31 +41,42 @@ export function ModelComparison() {
     )
   }
 
-  const runComparison = () => {
+  const runComparison = async () => {
     if (!prompt.trim() || selectedModels.length === 0) return
     setIsRunning(true)
     setResults([])
 
-    // Simulated staggered results - In a real implementation this would call `POST /api/chat` for each
-    // For now we simulate the interaction as requested, but using REAL model names
-    selectedModels.forEach((id, index) => {
-      setTimeout(
-        () => {
-          const model = availableModels.find((m) => m.id === id)
-          setResults((prev) => [
-            ...prev,
-            {
-              ...model,
-              latency: Math.floor(Math.random() * 2000) + 500,
-              tokens: Math.floor(Math.random() * 50) + 20,
-              content: `[${model?.name}] output for: "${prompt.substring(0, 30)}..."\n\nGenerated content demonstrating capabilities of this ${model?.size_mb ? (model.size_mb/1024).toFixed(1)+'GB' : ''} model.`,
-            },
-          ])
-          if (index === selectedModels.length - 1) setIsRunning(false)
-        },
-        index * 800 + 500,
-      )
-    })
+    try {
+        const response = await apiClient.chatCompare({
+            prompt: prompt,
+            model_ids: selectedModels,
+            max_tokens: 512,
+            temperature: 0.7
+        })
+        
+        // Map API results to UI format
+        // Backend returns: { results: [{ model_id, model_name, text, metrics: {...} }] }
+        setResults(response.results.map((r: any) => ({
+            id: r.model_id,
+            name: r.model_name,
+            content: r.text, // The API returns 'text', we map to 'content' for the UI
+            latency: r.metrics.latency_ms,
+            tokens: r.metrics.tokens_per_sec ? r.metrics.tokens_per_sec.toFixed(1) : 0,
+            backend: r.metrics.backend || "Local" // API might not always send backend in metrics but we can infer or it's fine
+        })))
+
+    } catch (e) {
+        console.error("Comparison failed", e)
+        // Show error for all selected models
+        setResults(selectedModels.map(id => ({
+            id,
+            content: `[ERROR] Failed to run comparison. Ensure models are loaded.`,
+            latency: 0,
+            tokens: 0
+        })))
+    } finally {
+        setIsRunning(false)
+    }
   }
 
   return (

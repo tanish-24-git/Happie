@@ -340,3 +340,68 @@ async def pull_model_intent(request: dict):
         status_code=400,
         detail=f"Unknown model '{clean_query}'. Try: {available}... OR use 'repo_id:filename'"
     )
+
+
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
+
+@router.post("/pull-stream")
+async def pull_model_stream_endpoint(request: dict):
+    """
+    Stream download progress via SSE.
+    Client should listen to 'progress' events.
+    """
+    from hapie.api.recommend import MODEL_CATALOG, TASK_MAP
+    from pathlib import Path
+    
+    query = request.get("query", "").strip()
+    clean_query = query.lower().replace("hapie pull ", "").replace("hapie ", "").strip()
+    
+    # 1. Resolve Model Intent (Reuse logic)
+    repo_id = None
+    filename = None
+    model_id = None
+    name = None
+    
+    # Check Catalog/Task
+    if clean_query in MODEL_CATALOG:
+        m = MODEL_CATALOG[clean_query]
+        repo_id, filename, model_id, name = m["repo_id"], m["filename"], clean_query, m["name"]
+    elif clean_query in TASK_MAP:
+        mid = TASK_MAP[clean_query]
+        m = MODEL_CATALOG[mid]
+        repo_id, filename, model_id, name = m["repo_id"], m["filename"], mid, m["name"]
+    elif ":" in query:
+        # Custom
+        parts = query.replace("hapie pull ", "").strip().split(":", 1)
+        if len(parts) == 2:
+            repo_id, filename = parts[0].strip(), parts[1].strip()
+            model_id = Path(filename).stem.lower()
+            name = filename
+            
+    if not repo_id:
+        # Return error stream
+        async def err_gen():
+            yield json.dumps({"status": "error", "error": "Unknown model. Try 'repo:file.gguf'"}) + "\n"
+        return StreamingResponse(err_gen(), media_type="application/x-ndjson")
+
+    # 2. Stream Generator
+    async def event_generator():
+        try:
+            # We assume manager.pull_model_stream is async generator
+            async for progress in model_manager.pull_model_stream(repo_id, filename, model_id, name):
+                yield json.dumps(progress) + "\n"
+        except Exception as e:
+            yield json.dumps({"status": "error", "error": str(e)}) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+
+@router.post("/pull/cancel")
+async def cancel_pull(request: dict):
+    model_id = request.get("model_id")
+    if not model_id:
+        raise HTTPException(status_code=400, detail="model_id required")
+    model_manager.cancel_download(model_id)
+    return {"status": "success"}

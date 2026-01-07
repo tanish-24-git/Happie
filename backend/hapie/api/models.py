@@ -256,23 +256,32 @@ async def pull_custom_model(request: PullCustomModelRequest):
 async def pull_model_intent(request: dict):
     """
     Smart model pulling with 3-tier fallback:
-    Tier 1: MODELCATALOG
-    Tier 2: TASKMAP shortcuts
-    Tier 3: Custom syntax (repo_id:filename)
+    Tier 1: MODELCATALOG (Popular curated models)
+    Tier 2: TASKMAP shortcuts (Best for 'coding', 'chat' etc)
+    Tier 3: Custom syntax (repo_id:filename) for ANY GGUF
     """
     from hapie.api.recommend import MODEL_CATALOG, TASK_MAP
+    import re
     
-    query = request.get("query", "").lower().replace("hapie pull ", "").replace("hapie ", "").strip()
+    query = request.get("query", "").strip()
+    clean_query = query.lower().replace("hapie pull ", "").replace("hapie ", "").strip()
     
-    # TIER 1: MODELCATALOG
     model_id = None
-    for mid in MODEL_CATALOG.keys():
-        if mid in query:
-            model_id = mid
-            break
-    
-    if model_id:
+    model_info = None
+
+    # 🌟 TIER 1: MODELCATALOG DIRECT MATCH
+    # Check if user typed "phi3", "mistral", "llama3" etc directly
+    if clean_query in MODEL_CATALOG:
+        model_id = clean_query
         model_info = MODEL_CATALOG[model_id]
+
+    # 🌟 TIER 2: TASKMAP SHORTCUTS
+    # Check if user typed "coding", "fast", "uncensored" etc
+    if not model_id and clean_query in TASK_MAP:
+        model_id = TASK_MAP[clean_query]
+        model_info = MODEL_CATALOG[model_id]
+        
+    if model_id and model_info:
         try:
             pulled_model = model_manager.pull_huggingface_model(
                 repo_id=model_info["repo_id"],
@@ -288,67 +297,46 @@ async def pull_model_intent(request: dict):
                 "message": f"{model_info['name']} pulled and activated!"
             }
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to pull model: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # 🌟 TIER 3: CUSTOM SYNTAX (repo:filename)
+    # Allows pulling ANY file: "bartowski/Phi-3:Q4_K_M.gguf"
+    # Regex to capture repo (anything before last colon) and filename (anything after)
+    # We use last colon as separator because repo might not have colons, but filename usage here implies separation
+    # A cleaner syntax might be "repo/name:filename" or space based. 
+    # User requested: "bartowski/Phi-3:Q4_K_M.gguf" -> likely split by colon or assume filename is last part if full path?
+    # User example: "hapie pull repo:filename" -> "bartowski/Phi-3:Q4_K_M.gguf"
+    # Actually the user prompt said: "repo:filename -> ANY GGUF (bartowski/Phi-3:Q4_K_M.gguf)"
+    # Wait, the example "bartowski/Phi-3:Q4_K_M.gguf" looks like colon usage "bartowski/Phi-3 : Q4_K_M.gguf"? 
+    # Or is it "bartowski/Phi-3/Q4_K_M.gguf" ? 
+    # Standard HF is `repo_id` `filename`. 
+    # Let's support `repo_id:filename` explicitly as requested.
     
-    # TIER 2: TASKMAP
-    if query in TASK_MAP:
-        model_id = TASK_MAP[query]
-        model_info = MODEL_CATALOG[model_id]
-        try:
-            pulled_model = model_manager.pull_huggingface_model(
-                repo_id=model_info["repo_id"],
-                filename=model_info["filename"],
-                model_id=model_id,
-                name=model_info["name"]
-            )
-            model_manager.set_active_model(model_id)
-            return {
-                "status": "success",
-                "model": pulled_model,
-                "now_active": True,
-                "message": f"{model_info['name']} pulled via '{query}' shortcut!"
-            }
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to pull model: {str(e)}")
-    
-    # TIER 3: Custom syntax (repo_id:filename)
+    # Check for direct repo/file match pattern
     if ":" in query:
-        try:
-            parts = query.split(":", 1)
+        parts = query.replace("hapie pull ", "").strip().split(":", 1)
+        if len(parts) == 2:
             repo_id = parts[0].strip()
             filename = parts[1].strip()
             
-            if not repo_id or not filename:
-                raise ValueError("Both repo_id and filename required")
-            
-            model_id = f"{repo_id.split('/')[-1].lower()}"
-            name = filename.replace('.gguf', '')
-            
-            pulled_model = model_manager.pull_huggingface_model(
-                repo_id=repo_id,
-                filename=filename,
-                model_id=model_id,
-                name=name
-            )
-            model_manager.set_active_model(model_id)
-            
-            return {
-                "status": "success",
-                "model": pulled_model,
-                "now_active": True,
-                "message": f"Custom model '{name}' pulled and activated!"
-            }
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid custom model syntax. Use format: 'repo_id:filename' Example: 'bartowski/Qwen2-Deita-500m-GGUF:Qwen2-Deita-500m-Q4_K_M.gguf'"
-            )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to pull custom model: {str(e)}")
-    
-    # TIER 4: Not found
-    available = ", ".join(list(MODEL_CATALOG.keys())[:5])
+            try:
+                pulled_model = model_manager.pull_huggingface_model(
+                    repo_id=repo_id,
+                    filename=filename
+                )
+                model_manager.set_active_model(pulled_model['id'])
+                return {
+                    "status": "success",
+                    "model": pulled_model,
+                    "now_active": True,
+                    "message": f"Custom model from {repo_id} pulled!"
+                }
+            except Exception as e:
+                 raise HTTPException(status_code=500, detail=str(e))
+
+    # 🌟 TIER 4: HELP / FAIL
+    available = ", ".join(list(MODEL_CATALOG.keys())[:8])
     raise HTTPException(
         status_code=400,
-        detail=f"Could not parse model. Available: {available}... or use 'repo_id:filename'"
+        detail=f"Unknown model '{clean_query}'. Try: {available}... OR use 'repo_id:filename'"
     )

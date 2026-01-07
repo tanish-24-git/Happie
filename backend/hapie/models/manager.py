@@ -147,19 +147,37 @@ class ModelManager:
             Registered model dict
         """
         if model_id is None:
-            model_id = Path(filename).stem
+            model_id = Path(filename).stem.lower()  # ID is safe to lowercase
         
         if name is None:
             name = repo_id.split("/")[-1]
         
+        # Get token from DB
+        from hapie.cloud import ApiKeyManager
+        session = self.db.get_session()
+        token = None
+        try:
+            manager = ApiKeyManager(session)
+            token = manager.get_key("huggingface")
+        except:
+            pass
+        finally:
+            session.close()
+
         # Download model
         print(f"Downloading {repo_id}/{filename}...")
-        local_path = hf_hub_download(
-            repo_id=repo_id,
-            filename=filename,
-            cache_dir=str(self.models_dir),
-            resume_download=True
-        )
+        try:
+            local_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,  # Respect case!
+                token=token,       # Use user's token
+                cache_dir=str(self.models_dir),
+                resume_download=True
+            )
+        except Exception as e:
+            if "401" in str(e) or "403" in str(e):
+                raise ValueError("Authentication failed. Please check your HF_TOKEN in settings.")
+            raise e
         
         # Get file size
         size_mb = Path(local_path).stat().st_size / (1024 * 1024)

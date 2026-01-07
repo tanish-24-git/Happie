@@ -12,6 +12,10 @@ class ApiKeyRequest(BaseModel):
     api_key: str
 
 
+class HfTokenRequest(BaseModel):
+    hf_token: str
+
+
 @router.get("/api-keys")
 async def list_api_keys():
     """List configured providers with masked keys"""
@@ -72,6 +76,35 @@ async def delete_api_key(provider: str):
         manager = ApiKeyManager(session)
         manager.delete_key(provider)
         return {"status": "success", "provider": provider}
+    finally:
+        session.close()
+
+
+@router.post("/hf-token")
+async def save_hf_token(token: HfTokenRequest):
+    """Save HuggingFace token for gated models"""
+    db = get_db()
+    session = db.get_session()
+    try:
+        manager = ApiKeyManager(session)
+        manager.save_key("huggingface", token.hf_token)
+        return {"status": "success", "message": "HF_TOKEN saved. 45K+ models unlocked."}
+    finally:
+        session.close()
+
+
+@router.get("/hf-token/status")
+async def hf_token_status():
+    """Check if HuggingFace token is configured"""
+    db = get_db()
+    session = db.get_session()
+    try:
+        manager = ApiKeyManager(session)
+        try:
+            token = manager.get_key("huggingface")
+            return {"configured": bool(token)}
+        except KeyError:
+            return {"configured": False}
     finally:
         session.close()
 

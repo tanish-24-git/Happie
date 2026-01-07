@@ -9,18 +9,32 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 
-const MODELS = [
-  { id: "llama-3-8b", name: "Llama 3.1 8B", type: "Local", backend: "CUDA" },
-  { id: "mistral-v3", name: "Mistral v0.3", type: "Local", backend: "ONNX" },
-  { id: "gpt-4o", name: "GPT-4o", type: "Cloud", backend: "API" },
-  { id: "claude-sonnet", name: "Claude 3.5 Sonnet", type: "Cloud", backend: "API" },
-]
+// MODELS are now fetched from API
+// const MODELS = [ ... ] 
 
 export function ModelComparison() {
   const [prompt, setPrompt] = React.useState("")
-  const [selectedModels, setSelectedModels] = React.useState(["llama-3-8b", "mistral-v3"])
+  const [selectedModels, setSelectedModels] = React.useState<string[]>([])
+  const [availableModels, setAvailableModels] = React.useState<any[]>([])
+  const [started, setStarted] = React.useState(false) // To track if loading happened
+  
   const [isRunning, setIsRunning] = React.useState(false)
   const [results, setResults] = React.useState<any[]>([])
+
+  React.useEffect(() => {
+    // Fetch models from API
+    fetch("http://localhost:8000/api/models/")
+      .then(res => res.json())
+      .then(data => {
+        setAvailableModels(data)
+        // Default select first 2
+        if (data.length > 0) {
+            setSelectedModels(data.slice(0, 2).map((m: any) => m.id))
+        }
+      })
+      .catch(err => console.error("Failed to fetch models", err))
+      .finally(() => setStarted(true))
+  }, [])
 
   const toggleModel = (id: string) => {
     setSelectedModels((prev) =>
@@ -33,18 +47,19 @@ export function ModelComparison() {
     setIsRunning(true)
     setResults([])
 
-    // Simulated staggered results
+    // Simulated staggered results - In a real implementation this would call `POST /api/chat` for each
+    // For now we simulate the interaction as requested, but using REAL model names
     selectedModels.forEach((id, index) => {
       setTimeout(
         () => {
-          const model = MODELS.find((m) => m.id === id)
+          const model = availableModels.find((m) => m.id === id)
           setResults((prev) => [
             ...prev,
             {
               ...model,
               latency: Math.floor(Math.random() * 2000) + 500,
               tokens: Math.floor(Math.random() * 50) + 20,
-              content: `Inference results for ${model?.name}. High analytical fidelity detected. The prompt was analyzed using ${model?.backend} backend. Tokens generated: ${Math.floor(Math.random() * 1000)}.`,
+              content: `[${model?.name}] output for: "${prompt.substring(0, 30)}..."\n\nGenerated content demonstrating capabilities of this ${model?.size_mb ? (model.size_mb/1024).toFixed(1)+'GB' : ''} model.`,
             },
           ])
           if (index === selectedModels.length - 1) setIsRunning(false)
@@ -76,7 +91,8 @@ export function ModelComparison() {
                   Select Models (Max 4)
                 </label>
                 <div className="flex flex-wrap items-center gap-3">
-                  {MODELS.map((model) => (
+                  {started && availableModels.length === 0 && <div className="text-xs text-muted-foreground p-1">No models found. Go to Chat to pull some!</div>}
+                  {availableModels.map((model) => (
                     <div
                       key={model.id}
                       className={cn(
@@ -91,7 +107,7 @@ export function ModelComparison() {
                       />
                       <span className="text-xs font-medium">{model.name}</span>
                       <Badge variant="outline" className="text-[9px] h-3.5 px-1 uppercase leading-none">
-                        {model.type}
+                        {model.type || (model.provider === "huggingface" ? "Local" : "Cloud")}
                       </Badge>
                     </div>
                   ))}
@@ -125,7 +141,7 @@ export function ModelComparison() {
           >
             {selectedModels.map((id) => {
               const result = results.find((r) => r.id === id)
-              const model = MODELS.find((m) => m.id === id)
+              const model = availableModels.find((m) => m.id === id)
 
               return (
                 <div key={id} className="flex flex-col rounded-xl border bg-muted/10 overflow-hidden min-h-[400px]">
@@ -134,10 +150,10 @@ export function ModelComparison() {
                       <h4 className="text-sm font-semibold">{model?.name}</h4>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="secondary" className="text-[9px] h-3.5">
-                          {model?.backend}
+                          {model?.backend || 'API'}
                         </Badge>
                         <Badge variant="outline" className="text-[9px] h-3.5">
-                          {model?.type}
+                          {model?.provider === "huggingface" ? "Local" : (model?.type || "Cloud")}
                         </Badge>
                       </div>
                     </div>

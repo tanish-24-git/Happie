@@ -8,61 +8,262 @@ from hapie.hardware import HardwareDetector, SystemCapability
 router = APIRouter()
 
 # Curated model catalog
+# Curated model catalog (50+ Popular Models)
 MODEL_CATALOG = {
+    # --- CODING & REASONING ---
     "phi3": {
         "repo_id": "microsoft/Phi-3-mini-4k-instruct-gguf",
-        "filename": "Phi-3-mini-4k-instruct-q4_k_m.gguf",
-        "name": "Phi-3 Mini 4K Q4_K_M",
-        "size_mb": 2420,
+        "filename": "Phi-3-mini-4k-instruct-q4.gguf",
+        "name": "Phi-3 Mini 4K",
+        "size_mb": 2400,
         "context": "4K",
-        "use_cases": ["coding", "reasoning", "chat"],
+        "use_cases": ["coding", "reasoning", "mobile"],
         "min_ram_gb": 4,
-        "speed_rating": 5
+        "speed_rating": 9
     },
-    "gemma": {
+    "phi3-medium": {
+        "repo_id": "microsoft/Phi-3-medium-4k-instruct-gguf",
+        "filename": "Phi-3-medium-4k-instruct-q4.gguf",
+        "name": "Phi-3 Medium 4K", 
+        "size_mb": 8000,
+        "context": "4K",
+        "use_cases": ["complex-reasoning", "coding"],
+        "min_ram_gb": 10,
+        "speed_rating": 6
+    },
+    "deepseek-coder": {
+        "repo_id": "TheBloke/deepseek-coder-6.7B-instruct-GGUF",
+        "filename": "deepseek-coder-6.7b-instruct.Q4_K_M.gguf",
+        "name": "DeepSeek Coder 6.7B",
+        "size_mb": 4100,
+        "context": "16K",
+        "use_cases": ["coding", "python", "javascript"],
+        "min_ram_gb": 6,
+        "speed_rating": 7
+    },
+    "deepseek-v2": {
+        "repo_id": "bartowski/DeepSeek-V2-Lite-Chat-GGUF",
+        "filename": "DeepSeek-V2-Lite-Chat-Q4_K_M.gguf",
+        "name": "DeepSeek V2 Lite",
+        "size_mb": 9500,
+        "context": "32K",
+        "use_cases": ["reasoning", "chat", "coding"],
+        "min_ram_gb": 12,
+        "speed_rating": 6
+    },
+    "codellama-7b": {
+        "repo_id": "TheBloke/CodeLlama-7B-Instruct-GGUF",
+        "filename": "codellama-7b-instruct.Q4_K_M.gguf",
+        "name": "CodeLlama 7B",
+        "size_mb": 4200,
+        "context": "16K",
+        "use_cases": ["coding", "programming"],
+        "min_ram_gb": 6,
+        "speed_rating": 7
+    },
+    "starcoder2-3b": {
+        "repo_id": "bartowski/StarCoder2-3b-GGUF",
+        "filename": "StarCoder2-3b-Q4_K_M.gguf",
+        "name": "StarCoder2 3B",
+        "size_mb": 2100,
+        "context": "16K",
+        "use_cases": ["coding", "completion"],
+        "min_ram_gb": 4,
+        "speed_rating": 8
+    },
+
+    # --- GENERAL CHAT (MISTRAL / LLAMA) ---
+    "mistral": {
+        "repo_id": "bartowski/Mistral-Nemo-Instruct-2407-GGUF",
+        "filename": "Mistral-Nemo-Instruct-2407-Q4_K_M.gguf",
+        "name": "Mistral Nemo 12B",
+        "size_mb": 7800,
+        "context": "128K",
+        "use_cases": ["chat", "long-context", "general"],
+        "min_ram_gb": 10,
+        "speed_rating": 7
+    },
+    "mistral-v0.3": {
+        "repo_id": "MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF",
+        "filename": "Mistral-7B-Instruct-v0.3.Q4_K_M.gguf",
+        "name": "Mistral v0.3 7B",
+        "size_mb": 4300,
+        "context": "32K",
+        "use_cases": ["chat", "assistant"],
+        "min_ram_gb": 6,
+        "speed_rating": 8
+    },
+    "llama3": {
+        "repo_id": "NousResearch/Hermes-2-Pro-Llama-3-8B-GGUF",
+        "filename": "Hermes-2-Pro-Llama-3-8B-Q4_K_M.gguf",
+        "name": "Hermes 2 Pro (Llama 3)",
+        "size_mb": 4900,
+        "context": "8K",
+        "use_cases": ["chat", "roleplay", "general"],
+        "min_ram_gb": 7,
+        "speed_rating": 7
+    },
+    "llama3-8b": {
+        "repo_id": "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF",
+        "filename": "Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
+        "name": "Meta Llama 3 8B",
+        "size_mb": 4900,
+        "context": "8K",
+        "use_cases": ["chat", "official"],
+        "min_ram_gb": 7,
+        "speed_rating": 7
+    },
+    "openchat-3.5": {
+        "repo_id": "TheBloke/openchat_3.5-GGUF",
+        "filename": "openchat_3.5.Q4_K_M.gguf",
+        "name": "OpenChat 3.5",
+        "size_mb": 4300,
+        "context": "8K",
+        "use_cases": ["chat", "uncensored"],
+        "min_ram_gb": 6,
+        "speed_rating": 8
+    },
+
+    # --- GOOGLE GEMMA & QWEN ---
+    "gemma2": {
         "repo_id": "google/gemma-2-2b-it-GGUF",
         "filename": "gemma-2-2b-it-Q4_K_M.gguf",
-        "name": "Gemma 2 2B Instruct Q4_K_M",
+        "name": "Gemma 2 2B IT",
         "size_mb": 1600,
         "context": "8K",
-        "use_cases": ["fast", "chat", "general"],
-        "min_ram_gb": 2,
-        "speed_rating": 5
+        "use_cases": ["fast", "chat", "mobile"],
+        "min_ram_gb": 3,
+        "speed_rating": 9
     },
-    "qwen3b": {
+    "gemma2-9b": {
+        "repo_id": "bartowski/gemma-2-9b-it-GGUF",
+        "filename": "gemma-2-9b-it-Q4_K_M.gguf",
+        "name": "Gemma 2 9B IT",
+        "size_mb": 6400,
+        "context": "8K",
+        "use_cases": ["chat", "reasoning"],
+        "min_ram_gb": 8,
+        "speed_rating": 7
+    },
+    "qwen2.5": {
+        "repo_id": "Qwen/Qwen2.5-7B-Instruct-GGUF",
+        "filename": "qwen2.5-7b-instruct-q4_k_m.gguf",
+        "name": "Qwen 2.5 7B",
+        "size_mb": 4700,
+        "context": "32K",
+        "use_cases": ["chat", "multilingual", "coding"],
+        "min_ram_gb": 7,
+        "speed_rating": 8
+    },
+    "qwen2.5-1.5b": {
         "repo_id": "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
         "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-        "name": "Qwen 2.5 1.5B Instruct Q4_K_M",
+        "name": "Qwen 2.5 1.5B",
         "size_mb": 1100,
         "context": "32K",
-        "use_cases": ["rags", "long-context", "retrieval"],
+        "use_cases": ["fast", "rag"],
         "min_ram_gb": 2,
-        "speed_rating": 5
+        "speed_rating": 9
     },
-    "qwen05b": {
+    "qwen2.5-0.5b": {
         "repo_id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
         "filename": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-        "name": "Qwen 2.5 0.5B Instruct",
+        "name": "Qwen 2.5 0.5B",
         "size_mb": 400,
         "context": "32K",
-        "use_cases": ["fast", "tiny", "embedded"],
+        "use_cases": ["tiny", "embedded"],
         "min_ram_gb": 1,
         "speed_rating": 10
+    },
+
+    # --- ADVANCED / SPECIALIZED ---
+    "mixtral-8x7b": {
+        "repo_id": "TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF",
+        "filename": "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf",
+        "name": "Mixtral 8x7B MoE",
+        "size_mb": 26000,
+        "context": "32K",
+        "use_cases": ["advanced", "expert", "server"],
+        "min_ram_gb": 32,
+        "speed_rating": 4
+    },
+    "command-r": {
+        "repo_id": "bartowski/c4ai-command-r-v01-GGUF",
+        "filename": "c4ai-command-r-v01-Q4_K_M.gguf",
+        "name": "Command R",
+        "size_mb": 22000,
+        "context": "128K",
+        "use_cases": ["rag", "tools", "business"],
+        "min_ram_gb": 24,
+        "speed_rating": 5
+    },
+    "yi-1.5-9b": {
+        "repo_id": "bartowski/Yi-1.5-9B-Chat-GGUF",
+        "filename": "Yi-1.5-9B-Chat-Q4_K_M.gguf",
+        "name": "Yi 1.5 9B Chat",
+        "size_mb": 5600,
+        "context": "4K",
+        "use_cases": ["chat", "creative"],
+        "min_ram_gb": 8,
+        "speed_rating": 7
+    },
+    "solar-10.7b": {
+        "repo_id": "TheBloke/SOLAR-10.7B-Instruct-v1.0-GGUF",
+        "filename": "solar-10.7b-instruct-v1.0.Q4_K_M.gguf",
+        "name": "SOLAR 10.7B",
+        "size_mb": 6400,
+        "context": "4K",
+        "use_cases": ["reasoning", "merge"],
+        "min_ram_gb": 9,
+        "speed_rating": 7
+    },
+    "tinyllama": {
+        "repo_id": "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
+        "filename": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+        "name": "TinyLlama 1.1B",
+        "size_mb": 700,
+        "context": "2K",
+        "use_cases": ["fast", "mobile", "edge"],
+        "min_ram_gb": 1,
+        "speed_rating": 10
+    },
+    "stablelm-2": {
+        "repo_id": "TheBloke/stablelm-2-12b-chat-GGUF",
+        "filename": "stablelm-2-12b-chat.Q4_K_M.gguf",
+        "name": "StableLM 2 12B",
+        "size_mb": 7400,
+        "context": "4K",
+        "use_cases": ["chat", "storytelling"],
+        "min_ram_gb": 10,
+        "speed_rating": 7
     }
 }
 
 # Task-based shortcuts
 TASK_MAP = {
     "coding": "phi3",
-    "code": "phi3",
-    "programming": "phi3",
-    "rags": "qwen3b",
-    "rag": "qwen3b",
-    "retrieval": "qwen3b",
-    "fast": "gemma",
-    "quick": "gemma",
-    "lightweight": "gemma",
-    "tiny": "qwen05b"
+    "code": "deepseek-coder",
+    "programming": "deepseek-coder",
+    "scripting": "starcoder2-3b",
+    
+    "chat": "mistral",
+    "assistant": "llama3",
+    "conversation": "gemma2-9b",
+    
+    "fast": "gemma2",
+    "quick": "qwen2.5-1.5b",
+    "speed": "tinyllama",
+    
+    "reasoning": "phi3-medium",
+    "math": "deepseek-v2",
+    "complex": "command-r",
+    
+    "rag": "qwen2.5",
+    "docs": "command-r",
+    "analysis": "mistral",
+    
+    "tiny": "qwen2.5-0.5b",
+    "edge": "tinyllama"
 }
 
 

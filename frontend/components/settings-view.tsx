@@ -9,11 +9,37 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
+import { HfTokenModal } from "@/components/hf-token-modal"
+import { useState, useEffect } from "react"
+import { Badge } from "@/components/ui/badge"
+
 export function SettingsView() {
   const { theme, setTheme } = useTheme()
+  const [showHfModal, setShowHfModal] = useState(false)
+  const [hfStatus, setHfStatus] = useState(false)
+
+  const checkHfStatus = async () => {
+    try {
+      // In a real app we'd use a robust client, doing simple fetch here to match scope
+      const res = await fetch("http://localhost:8000/api/settings/hf-token/status")
+      const data = await res.json()
+      setHfStatus(data.configured)
+    } catch (e) {
+      console.error("Failed to check HF status")
+    }
+  }
+
+  useEffect(() => {
+    checkHfStatus()
+  }, [])
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background">
+      <HfTokenModal 
+        open={showHfModal} 
+        onOpenChange={setShowHfModal} 
+        onSuccess={checkHfStatus}
+      />
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-3xl p-6 space-y-8 pb-12">
           <section className="space-y-6">
@@ -26,6 +52,7 @@ export function SettingsView() {
             <Card className="bg-muted/5">
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
+                  {/* ... existing code ... */}
                   <div className="space-y-0.5">
                     <Label className="text-sm">Dark Mode</Label>
                     <p className="text-xs text-muted-foreground">High-contrast interface for technical environments.</p>
@@ -50,6 +77,39 @@ export function SettingsView() {
                   </div>
                 </div>
               </CardContent>
+            </Card>
+          </section>
+
+          <Separator />
+
+          {/* HUGGING FACE SECTION */}
+          <section className="space-y-6">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <span className="text-2xl">🤗</span> Hugging Face (45K+ Models)
+              </h3>
+              <p className="text-sm text-muted-foreground">Unlock access to gated models like Llama 3, Mistral v0.3, and Gemma 2.</p>
+            </div>
+            <Card className="bg-blue-50/50 border-blue-100 dark:bg-blue-950/10 dark:border-blue-900/50">
+                <CardContent className="pt-6">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <Label className="text-base font-semibold">HF_TOKEN Status</Label>
+                                <Badge variant={hfStatus ? "default" : "secondary"} className={hfStatus ? "bg-green-600 hover:bg-green-700" : ""}>
+                                    {hfStatus ? "✅ Active" : "⚠️ Not Configured"}
+                                </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground max-w-md">
+                                Required for direct downloads of most modern GGUF models. 
+                                We encrypt this token locally.
+                            </p>
+                        </div>
+                        <Button onClick={() => setShowHfModal(true)} variant={hfStatus ? "outline" : "default"}>
+                            {hfStatus ? "Update Token" : "Add HF_TOKEN"}
+                        </Button>
+                    </div>
+                </CardContent>
             </Card>
           </section>
 

@@ -11,6 +11,7 @@ from hapie.hardware import HardwareDetector
 from hapie.policy import PolicyEngine
 from hapie.db import get_db
 from hapie.db.models import Conversation, Message
+from hapie.api.prompts import build_single_chat_prompt, build_comparison_prompt
 
 router = APIRouter()
 
@@ -19,68 +20,6 @@ model_manager = ModelManager()
 inference_engine = InferenceEngine()
 detector = HardwareDetector()
 policy_engine = PolicyEngine()
-
-
-def build_system_prompt(conversation_id: Optional[str] = None) -> str:
-    """
-    Build comprehensive system prompt with hardware/model context.
-    
-    This prevents hallucinations by giving the model awareness of:
-    - System hardware (CPU, GPU, RAM)
-    - Active policy and execution backend
-    - Available models
-    - Conversation history
-    """
-    # Hardware detection
-    capability = detector.detect()
-    policy = policy_engine.evaluate(capability)
-    
-    # Model information
-    models = model_manager.list_models()
-    active = model_manager.get_active_model()
-    
-    # Conversation history (last 6 turns to align with user constraints)
-    history = ""
-    if conversation_id:
-        db = get_db()
-        session = db.get_session()
-        try:
-            messages = session.query(Message).filter(
-                Message.conversation_id == conversation_id
-            ).order_by(Message.created_at.desc()).limit(6).all()
-            messages.reverse()  # Chronological order
-            history = "\n".join([f"{m.role.upper()}: {m.content}" for m in messages])
-        finally:
-            session.close()
-    
-    # Format system prompt
-    # We keep the system section stable as requested
-    system_prompt = f"""You are HAPIE, an intelligent hardware-aware AI assistant running locally on this system.
-
-SYSTEM CONTEXT:
-CPU: {capability.cpu_brand} ({capability.cpu_cores} Cores / {capability.cpu_threads} Threads)
-RAM: {capability.available_ram_gb:.1f}GB available / {capability.total_ram_gb:.1f}GB total
-GPU: {capability.gpu_vendor.value.upper()} ({capability.gpu_vram_gb}GB VRAM)
-Backend: {policy.backend.value.upper()} | Context Limit: {policy.max_context_length}
-Active Model: {active['name'] if active else 'None'} ({active.get('provider', 'local') if active else 'N/A'})
-
-AVAILABLE MODELS ({len(models)}):
-{', '.join(m['name'] for m in models[:5])}{'...' if len(models) > 5 else ''}
-
-INSTRUCTIONS:
-1. Answer general questions (coding, reasoning, chat) normally and helpfully.
-2. You have FULL awareness of the local hardware. If asked about the system, use the data above.
-3. For model recommendations, suggest GGUF models from HuggingFace that fit the available RAM.
-4. When recommending, give the user the exact command: "hapie pull <model-name>" or "pull <model-name>".
-
-You are helpful, precise, and hardware-aware.
-"""
-    
-    if history:
-        # Separate history clearly
-        system_prompt += f"\n\nCONVERSATION HISTORY:\n{history}"
-    
-    return system_prompt
 
 
 class ChatRequest(BaseModel):
@@ -174,9 +113,11 @@ async def single_chat(request: ChatRequest):
         
         # Generate response
         try:
-            # Build enhanced prompt with system context
-            system_prompt = build_system_prompt(request.conversation_id)
-            full_prompt = f"{system_prompt}\n\nHuman: {request.prompt}\n\nAssistant:"
+            # Build prompt using unified builder (NO role markers)
+            full_prompt = build_single_chat_prompt(
+                user_prompt=request.prompt,
+                conversation_id=request.conversation_id
+            )
 
             result = inference_engine.generate(
                 model_id=model_id,
@@ -281,12 +222,15 @@ async def compare_models(request: ComparisonRequest):
                 )
     
     # Execute inference for all models
+    # Build prompt using unified builder (NO role markers)
+    comparison_prompt = build_comparison_prompt(request.prompt)
+    
     results = []
     for model in models:
         try:
             result = inference_engine.generate(
                 model_id=model["id"],
-                prompt=request.prompt,
+                prompt=comparison_prompt,
                 max_tokens=request.max_tokens,
                 temperature=request.temperature,
                 top_p=request.top_p,

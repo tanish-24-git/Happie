@@ -389,97 +389,82 @@ export function ChatInterface() {
 
           {messages.map((message, i) => (
             <div
-              key={i}
-              className={cn("flex gap-4 text-sm", message.role === "user" ? "justify-end" : "justify-start")}
-            >
-              {message.role === "assistant" && (
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted/50">
-                  <Bot className="h-4 w-4" />
-                </div>
+              key={message.id || i}
+              className={cn(
+                "group flex gap-3 p-4",
+                message.role === "user" ? "justify-end" : "justify-start"
               )}
-              <div className={cn("max-w-[80%] space-y-2", message.role === "user" && "text-right")}>
-                <div
-                  className={cn(
-                    "rounded-lg px-4 py-2 leading-relaxed whitespace-pre-wrap",
-                    message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted/30 border",
-                  )}
-                >
-                  {message.content}
-                  {message.downloadProgress && (
-                    <div className="mt-4 space-y-2 min-w-[280px]">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <Progress value={message.downloadProgress.progress} className="h-1.5" />
+            >
+              {message.role === "user" ? (
+                <div className="order-2 flex flex-col items-end max-w-[70%]">
+                  <div className="rounded-2xl bg-primary px-4 py-3 text-sm text-primary-foreground shadow-md whitespace-pre-wrap">
+                    {message.content}
+                  </div>
+                </div>
+              ) : (
+                /* AI messages: left side, gray + metrics */
+                <div className="order-1 flex flex-col items-start max-w-[70%]">
+                  <div className="rounded-2xl bg-muted px-4 py-3 text-sm shadow-md whitespace-pre-wrap">
+                    {message.content}
+                    {message.downloadProgress && (
+                      <div className="mt-4 space-y-2 min-w-[280px]">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <Progress value={message.downloadProgress.progress} className="h-1.5" />
+                          </div>
+                          {message.actions?.map((action, idx) => (
+                            <Button 
+                              key={idx} 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-6 w-6 rounded-full hover:bg-muted-foreground/10 p-0" 
+                              onClick={action.onClick}
+                              title={action.label}
+                            >
+                              {action.icon}
+                            </Button>
+                          ))}
                         </div>
-                        {message.actions?.map((action, idx) => (
-                           <Button 
-                             key={idx} 
-                             size="sm" 
-                             variant="ghost" 
-                             className="h-6 w-6 rounded-full hover:bg-muted-foreground/10 p-0" 
-                             onClick={action.onClick}
-                             title={action.label}
-                           >
-                             {action.icon}
-                           </Button>
-                        ))}
-                      </div>
-                      <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                        <span>
+                        <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                          <span>
                             {(message.downloadProgress.downloaded / (1024 * 1024 * 1024)).toFixed(2)} GB / 
                             {(message.downloadProgress.totalSize / (1024 * 1024 * 1024)).toFixed(2)} GB 
                             ({message.downloadProgress.progress}%)
-                        </span>
-                        <span>{message.downloadProgress.speed} • {message.downloadProgress.eta} left</span>
+                          </span>
+                          <span>{message.downloadProgress.speed} • {message.downloadProgress.eta} left</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-                {message.role === "assistant" && message.metrics && (
-                  <div className="flex items-center gap-2 px-1 text-[10px] text-muted-foreground">
-                    {message.metrics.latency_ms && (
-                      <>
-                        <span>{(message.metrics.latency_ms / 1000).toFixed(2)}s latency</span>
-                        <span>•</span>
-                      </>
-                    )}
-                    {message.metrics.tokens_per_sec && (
-                      <>
-                        <span>{message.metrics.tokens_per_sec.toFixed(1)} t/s</span>
-                        <span>•</span>
-                      </>
-                    )}
-                    <span>{message.metrics.provider || getBackendDisplay()}</span>
-                    {message.metrics.estimated_cost_usd && (
-                      <>
-                        <span>•</span>
-                        <span className="text-amber-500">
-                          ${message.metrics.estimated_cost_usd.toFixed(4)}
-                        </span>
-                      </>
                     )}
                   </div>
-                )}
-                {message.actions && message.actions.length > 0 && !message.downloadProgress && (
+                  
+                  {message.actions && message.actions.length > 0 && !message.downloadProgress && (
                     <div className="flex gap-2 mt-2">
-                        {message.actions.map((action, idx) => (
-                            <Button 
-                                key={idx} 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-7 text-[10px] px-2 gap-1.5 border-muted-foreground/20 hover:bg-muted"
-                                onClick={action.onClick}
-                            >
-                                {action.icon}
-                                {action.label}
-                            </Button>
-                        ))}
+                      {message.actions.map((action, idx) => (
+                        <Button 
+                          key={idx} 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 text-[10px] px-2 gap-1.5 border-muted-foreground/20 hover:bg-muted"
+                          onClick={action.onClick}
+                        >
+                          {action.icon}
+                          {action.label}
+                        </Button>
+                      ))}
                     </div>
-                )}
-              </div>
-              {message.role === "user" && (
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-primary text-primary-foreground">
-                  <User className="h-4 w-4" />
+                  )}
+
+                  {message.metrics && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {message.metrics.latency_ms !== undefined && (
+                        <>{(message.metrics.latency_ms / 1000).toFixed(2)}s latency - </>
+                      )}
+                      {message.metrics.tokens_per_sec !== undefined && (
+                        <>{message.metrics.tokens_per_sec.toFixed(1)} t/s - </>
+                      )}
+                      {message.metrics.provider || getBackendDisplay()}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

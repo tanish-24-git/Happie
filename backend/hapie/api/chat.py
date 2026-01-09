@@ -113,20 +113,55 @@ async def single_chat(request: ChatRequest):
         
         # Generate response
         try:
-            # Build prompt using unified builder (NO role markers)
-            full_prompt = build_single_chat_prompt(
-                user_prompt=request.prompt,
-                conversation_id=request.conversation_id
-            )
+            # CHECK INTENT: System Status Query
+            # Explicitly route system status questions to the dedicated reporting logic
+            system_queries = ["system status", "system info", "how is my system running", "system report"]
+            normalized_prompt = request.prompt.lower().strip().replace("?", "")
+            
+            if any(q in normalized_prompt for q in system_queries):
+                # Fetch system status directly
+                from hapie.api.system import get_system_full_status
+                status_data = await get_system_full_status()
+                
+                # Format as a nice markdown report
+                hw = status_data["hardware"]
+                inf = status_data["inference"]
+                
+                result_text = f"""### System Status Report
 
-            result = inference_engine.generate(
-                model_id=model_id,
-                prompt=full_prompt,
-                max_tokens=request.max_tokens,
-                temperature=request.temperature,
-                top_p=request.top_p,
-                stream=False
-            )
+**HARDWARE**
+- **CPU:** {hw['cpu']['brand']} ({hw['cpu']['cores_physical']} cores)
+- **RAM:** {hw['memory']['available_gb']}GB available / {hw['memory']['total_gb']}GB total
+- **GPU:** {hw['gpu']['vendor']} {hw['gpu']['name']} ({hw['gpu']['vram_gb']}GB VRAM)
+
+**BACKEND**
+- **Engine:** {inf['backend']}
+- **Status:** ✅ RUNNING
+"""
+                result = {
+                    "text": result_text,
+                    "metrics": {
+                        "latency_ms": 10,
+                        "tokens_generated": len(result_text.split()),
+                        "tokens_per_sec": 0,
+                        "provider": "system"
+                    }
+                }
+            else:
+                # Normal Chat: Build prompt using unified builder (NO role markers)
+                full_prompt = build_single_chat_prompt(
+                    user_prompt=request.prompt,
+                    conversation_id=request.conversation_id
+                )
+
+                result = inference_engine.generate(
+                    model_id=model_id,
+                    prompt=full_prompt,
+                    max_tokens=request.max_tokens,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                    stream=False
+                )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
     

@@ -33,7 +33,7 @@ def get_base_system_prompt() -> str:
     - Focus ONLY on behavior rules
     - Be agnostic to hardware
     """
-    return """You are HAPIE, a helpful local AI assistant.
+    return """You are a helpful AI assistant.
 
 BEHAVIORAL INSTRUCTIONS:
 1. Answer questions directly and helpfully.

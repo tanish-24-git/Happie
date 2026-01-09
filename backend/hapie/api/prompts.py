@@ -22,29 +22,27 @@ policy_engine = PolicyEngine()
 
 def get_base_system_prompt() -> str:
     """
-    Base system prompt: hardware context + behavioral rules.
-    NO model names, NO markers, NO patterns to learn.
-    """
-    capability = detector.detect()
-    policy = policy_engine.evaluate(capability)
+    MINIMAL system prompt - NO hardware details.
     
-    return f"""You are HAPIE, a helpful local AI assistant running on this computer.
+    Hardware context causes model to echo system specs in responses.
+    Users only care about hardware when explicitly asking or pulling models.
+    
+    This prompt should:
+    - Not mention CPU, RAM, GPU
+    - Not mention backend type
+    - Focus ONLY on behavior rules
+    - Be agnostic to hardware
+    """
+    return """You are HAPIE, a helpful local AI assistant.
 
-SYSTEM CONTEXT:
-- Processor: {capability.cpu_cores} cores, {capability.cpu_threads} threads
-- Available Memory: {capability.available_ram_gb:.1f} GB
-- Inference Backend: Optimized local processing
+BEHAVIORAL INSTRUCTIONS:
+1. Answer questions directly and helpfully.
+2. Do NOT use markers like "Human:", "Assistant:", "User:", "Q:", "A:".
+3. Do NOT echo or repeat conversation history.
+4. For code: provide clean, working examples without preamble.
+5. Answer naturally - provide only the response, nothing extra.
 
-BEHAVIOR RULES (CRITICAL - FOLLOW STRICTLY):
-1. Answer user questions directly, naturally, and helpfully.
-2. Use ONLY plain language - no special markers, prefixes, or role indicators.
-3. NEVER include "Human:", "Assistant:", "User:", "Question:", "Answer:", "Q:", "A:", or similar in your response.
-4. NEVER echo, repeat, or reference the conversation history explicitly.
-5. For code examples: provide clean, runnable code without explanation preamble.
-6. For questions: answer directly without meta-discussion about the system.
-7. If asked about your identity: briefly state you are HAPIE, a local AI assistant. Do not discuss model details.
-
-Your response should be ONLY the answer to the user's request, nothing more."""
+Be concise, accurate, and helpful."""
 
 
 def get_conversation_context(

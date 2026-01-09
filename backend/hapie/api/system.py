@@ -122,3 +122,59 @@ async def get_system_info():
         "capability": capability.to_dict(),
         "policy": policy.to_dict()
     }
+
+
+@router.get("/status/full")
+async def get_system_full_status():
+    """
+    Complete system status endpoint.
+    
+    Use this for "how is my system running?" queries.
+    This is SEPARATE from chat context - hardware info belongs here, not in LLM prompts.
+    """
+    import psutil
+    from hapie.models import ModelManager, InferenceEngine
+    
+    model_manager = ModelManager()
+    inference_engine = InferenceEngine()
+    capability = detector.detect()
+    policy = policy_engine.evaluate(capability)
+    active_model = model_manager.get_active_model()
+    loaded_models = inference_engine.get_loaded_models()
+    memory = psutil.virtual_memory()
+    
+    return {
+        "status": "running",
+        "hardware": {
+            "cpu": {
+                "brand": capability.cpu_brand,
+                "cores_physical": capability.cpu_cores,
+                "threads": capability.cpu_threads,
+                "architecture": capability.cpu_arch
+            },
+            "memory": {
+                "total_gb": round(memory.total / (1024**3), 2),
+                "available_gb": round(memory.available / (1024**3), 2),
+                "used_percent": memory.percent
+            },
+            "gpu": {
+                "vendor": capability.gpu_vendor.value,
+                "name": capability.gpu_name,
+                "vram_gb": capability.gpu_vram_gb,
+                "count": capability.gpu_count
+            }
+        },
+        "inference": {
+            "backend": policy.backend.value,
+            "gpu_layers": policy.gpu_layers,
+            "max_context": policy.max_context_length,
+            "quantization_bits": policy.quantization_bits if policy.use_quantization else None,
+            "max_threads": policy.max_threads
+        },
+        "models": {
+            "active": active_model["name"] if active_model else None,
+            "active_id": active_model["id"] if active_model else None,
+            "loaded_count": len(loaded_models),
+            "loaded_ids": loaded_models
+        }
+    }

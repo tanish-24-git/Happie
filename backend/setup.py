@@ -43,7 +43,7 @@ def setup_base_model():
             name="Qwen2.5 1.5B Instruct"
         )
         
-        # Mark as base model
+        # Mark as base model and system intent model
         from hapie.db import get_db
         from hapie.db.models import Model as DBModel
         db = get_db()
@@ -52,7 +52,11 @@ def setup_base_model():
             db_model = session.query(DBModel).filter(DBModel.id == model["id"]).first()
             if db_model:
                 db_model.is_base_model = True
-                db_model.is_active = True
+                # Set metadata to mark this as system intent model
+                db_model.metadata_json = {"role": "system_intent"}
+                # DON'T set is_active = True
+                # This is NOT a chat model, so it shouldn't be "active"
+                db_model.is_active = False
                 session.commit()
         finally:
             session.close()

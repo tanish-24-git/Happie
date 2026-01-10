@@ -264,16 +264,29 @@ async def pull_model_intent(request: dict):
     import re
     
     query = request.get("query", "").strip()
-    clean_query = query.lower().replace("hapie pull ", "").replace("hapie ", "").strip()
+    print(f"DEBUG: pull_model_intent raw query: '{query}'")
+    # Remove "hapie pull", "hapie", and just "pull" to handle all cases
+    clean_query = query.lower().replace("hapie pull ", "").replace("hapie ", "").replace("pull ", "").strip()
+    print(f"DEBUG: pull_model_intent clean query: '{clean_query}'")
     
     model_id = None
     model_info = None
 
-    # 🌟 TIER 1: MODELCATALOG DIRECT MATCH
+    # 🌟 TIER 1: MODELCATALOG DIRECT & FUZZY MATCH
     # Check if user typed "phi3", "mistral", "llama3" etc directly
     if clean_query in MODEL_CATALOG:
         model_id = clean_query
         model_info = MODEL_CATALOG[model_id]
+    else:
+        # Fuzzy match: check if any catalog key is inside the user query
+        # e.g. "tinyllama 1.1b chat" contains "tinyllama"
+        # We sort keys by length descending to match specificity (e.g. match "llama3-8b" over "llama3")
+        sorted_keys = sorted(MODEL_CATALOG.keys(), key=len, reverse=True)
+        for key in sorted_keys:
+            if key in clean_query:
+                model_id = key
+                model_info = MODEL_CATALOG[key]
+                break
 
     # 🌟 TIER 2: TASKMAP SHORTCUTS
     # Check if user typed "coding", "fast", "uncensored" etc

@@ -45,6 +45,50 @@ class ModelManager:
         finally:
             session.close()
     
+    def get_active_chat_model(self) -> Optional[Dict]:
+        """
+        Get the currently active chat model, excluding system intent models.
+        
+        Returns:
+            Active chat model dict, or None if:
+            - No model is active
+            - Only system intent model is active
+        
+        This is the key method to detect "user has no chat model yet".
+        """
+        session = self.db.get_session()
+        try:
+            model = session.query(DBModel).filter(DBModel.is_active == True).first()
+            if not model:
+                return None
+            
+            # Check if this is the system intent model
+            metadata = model.metadata_json or {}
+            if metadata.get("role") == "system_intent":
+                return None
+            
+            return model.to_dict()
+        finally:
+            session.close()
+    
+    def get_system_model(self) -> Optional[Dict]:
+        """
+        Get the system intent model (Qwen).
+        
+        Returns:
+            System model dict with metadata["role"] == "system_intent"
+        """
+        session = self.db.get_session()
+        try:
+            models = session.query(DBModel).all()
+            for model in models:
+                metadata = model.metadata_json or {}
+                if metadata.get("role") == "system_intent":
+                    return model.to_dict()
+            return None
+        finally:
+            session.close()
+    
     def set_active_model(self, model_id: str) -> bool:
         """Set a model as active (deactivates others)"""
         session = self.db.get_session()

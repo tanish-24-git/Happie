@@ -171,27 +171,7 @@ export interface ImageResponse {
   };
 }
 
-// Audio Interfaces
-export interface TTSRequest {
-  text: string;
-  voice?: string;
-}
 
-export interface AudioResponse {
-  audio_base64: string;
-  metadata: {
-    model_used: string;
-    duration_sec: number;
-  };
-}
-
-export interface STTResponse {
-  text: string;
-  metadata: {
-    model_used: string;
-    duration_sec: number;
-  };
-}
 
 // ============================================================================
 // API Client Functions
@@ -389,31 +369,7 @@ class ApiClient {
     });
   }
 
-  // Audio API
-  async textToSpeech(request: TTSRequest): Promise<AudioResponse> {
-    return this.request<AudioResponse>('/api/audio/tts', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-  }
 
-  async speechToText(audioFile: File): Promise<STTResponse> {
-    const formData = new FormData();
-    formData.append('audio', audioFile);
-
-    const url = `${this.baseUrl}/api/audio/stt`;
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    return response.json();
-  }
 }
 
 // Singleton instance
@@ -445,6 +401,5 @@ export const {
   deleteApiKey,
   factoryReset,
   generateImage,
-  textToSpeech,
-  speechToText,
+
 } = apiClient;

@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import { MessageSquare, Repeat, ImageIcon, Headphones, Info, Settings, Cpu, Box } from "lucide-react"
+import { MessageSquare, Repeat, ImageIcon, Info, Settings, Cpu, Box } from "lucide-react"
 
 import {
   Sidebar,
@@ -41,11 +41,6 @@ const data = {
           title: "Image Generation",
           url: "/image",
           icon: ImageIcon,
-        },
-        {
-          title: "Audio (TTS/STT)",
-          url: "/audio",
-          icon: Headphones,
         },
       ],
     },

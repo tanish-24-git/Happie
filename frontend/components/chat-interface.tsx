@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import apiClient, { Model, ChatResponse } from "@/lib/api"
+import { MarkdownRenderer } from "@/components/markdown-renderer"
 
 interface ChatMessage {
   role: "user" | "assistant"
@@ -403,9 +404,9 @@ export function ChatInterface() {
                 </div>
               ) : (
                 /* AI messages: left side, gray + metrics */
-                <div className="order-1 flex flex-col items-start max-w-[70%]">
-                  <div className="rounded-2xl bg-muted px-4 py-3 text-sm shadow-md whitespace-pre-wrap">
-                    {message.content}
+                <div className="order-1 flex flex-col items-start max-w-[85%]">
+                  <div className="rounded-2xl bg-muted px-4 py-3 text-sm shadow-md overflow-hidden">
+                    <MarkdownRenderer content={message.content} />
                     {message.downloadProgress && (
                       <div className="mt-4 space-y-2 min-w-[280px]">
                         <div className="flex items-center gap-3">

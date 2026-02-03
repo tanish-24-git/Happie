@@ -19,6 +19,8 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import apiClient, { Model, ChatResponse } from "@/lib/api"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
+import { Plasma } from "@/components/Plasma"
+
 
 interface ChatMessage {
   role: "user" | "assistant"
@@ -374,8 +376,19 @@ export function ChatInterface() {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 px-4 py-6">
-        <div className="mx-auto max-w-3xl space-y-8">
+      <ScrollArea className="flex-1 px-4 py-6 relative">
+        <div className="absolute inset-0 pointer-events-none z-0 opacity-10">
+          <Plasma 
+             color="#ff6b35"
+             speed={0.6}
+             direction="forward"
+             scale={1.1}
+             opacity={0.8}
+             mouseInteractive={true}
+          />
+        </div>
+        <div className="mx-auto max-w-3xl space-y-8 relative z-10">
+
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Bot className="h-12 w-12 text-muted-foreground/50 mb-4" />

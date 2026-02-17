@@ -379,7 +379,7 @@ export function ChatInterface() {
       <ScrollArea className="flex-1 px-4 py-6 relative">
         <div className="absolute inset-0 pointer-events-none z-0 opacity-10">
           <Plasma 
-             color="#ff6b35"
+             color="#a855f7"
              speed={0.6}
              direction="forward"
              scale={1.1}

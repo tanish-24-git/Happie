@@ -13,6 +13,20 @@ try {
     exit 1
 }
 
+# Detect HOST HARDWARE TRUTH (Bypassing WSL)
+Write-Host ""
+Write-Host "Detecting host hardware profile..." -ForegroundColor Cyan
+$comp = Get-CimInstance Win32_ComputerSystem
+$totalRamGb = [Math]::Round($comp.TotalPhysicalMemory / 1GB, 1)
+$physCpus = $comp.NumberOfProcessors
+$logicalCpus = $comp.NumberOfLogicalProcessors
+
+# Inject into environment so Docker Compose can pick it up
+$env:HAPIE_HOST_TOTAL_RAM_GB = "$totalRamGb"
+$env:HAPIE_HOST_CPU_CORES = "$logicalCpus"
+
+Write-Host "✓ Detected Host: $totalRamGb GB RAM, $logicalCpus Logicals" -ForegroundColor Green
+
 # Build and start services
 Write-Host ""
 Write-Host "Building Docker images..." -ForegroundColor Yellow

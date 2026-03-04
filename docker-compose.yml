@@ -16,6 +16,9 @@ services:
       - ./backend/hapie:/app/hapie
     environment:
       - PYTHONUNBUFFERED=1
+      # Passed from Windows host via setup script
+      - HAPIE_HOST_TOTAL_RAM_GB=${HAPIE_HOST_TOTAL_RAM_GB}
+      - HAPIE_HOST_CPU_CORES=${HAPIE_HOST_CPU_CORES}
     restart: unless-stopped
     networks:
       - hapie-network

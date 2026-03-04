@@ -86,7 +86,28 @@ class HardwareDetector:
         return capability
     
     def _detect_cpu_cores(self) -> int:
-        """Detect physical CPU cores"""
+        """Detect physical CPU cores (prioritize host truth from env)"""
+        import os
+        host_cores = os.environ.get('HAPIE_HOST_CPU_CORES')
+        if host_cores:
+            try:
+                return int(host_cores)
+            except ValueError:
+                pass
+                
+        try:
+            # On Linux/WSL, /proc/cpuinfo often lists all physical cores
+            with open('/proc/cpuinfo', 'r') as f:
+                content = f.read()
+                # Count unique core IDs to get physical cores
+                cores = set()
+                for line in content.split('\n'):
+                    if 'core id' in line.lower():
+                        cores.add(line.split(':')[1].strip())
+                if cores:
+                    return len(cores)
+        except Exception:
+            pass
         return psutil.cpu_count(logical=False) or 1
     
     def _detect_cpu_threads(self) -> int:
@@ -108,7 +129,24 @@ class HardwareDetector:
         return platform.processor() or "Unknown"
     
     def _detect_total_ram(self) -> float:
-        """Detect total system RAM in GB"""
+        """Detect total system RAM (prioritize host truth from env)"""
+        import os
+        host_ram = os.environ.get('HAPIE_HOST_TOTAL_RAM_GB')
+        if host_ram:
+            try:
+                return round(float(host_ram), 2)
+            except ValueError:
+                pass
+
+        try:
+            # Check /proc/meminfo for raw host memory on Linux/WSL2
+            with open('/proc/meminfo', 'r') as f:
+                for line in f:
+                    if 'MemTotal' in line:
+                        kb = int(line.split()[1])
+                        return round(kb / (1024 ** 2), 2)
+        except Exception:
+            pass
         return round(psutil.virtual_memory().total / (1024 ** 3), 2)
     
     def _detect_available_ram(self) -> float:

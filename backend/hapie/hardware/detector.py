@@ -111,7 +111,14 @@ class HardwareDetector:
         return psutil.cpu_count(logical=False) or 1
     
     def _detect_cpu_threads(self) -> int:
-        """Detect logical CPU threads"""
+        """Detect logical CPU threads (prioritize host truth from env)"""
+        import os
+        host_threads = os.environ.get('HAPIE_HOST_CPU_THREADS')
+        if host_threads:
+            try:
+                return int(host_threads)
+            except ValueError:
+                pass
         return psutil.cpu_count(logical=True) or 1
     
     def _detect_cpu_arch(self) -> str:
@@ -119,7 +126,12 @@ class HardwareDetector:
         return platform.machine()
     
     def _detect_cpu_brand(self) -> str:
-        """Detect CPU brand/model"""
+        """Detect CPU brand/model (prioritize host truth from env)"""
+        import os
+        host_brand = os.environ.get('HAPIE_HOST_CPU_BRAND')
+        if host_brand:
+            return host_brand
+
         if CPU_INFO_AVAILABLE:
             try:
                 info = cpuinfo.get_cpu_info()

@@ -19,14 +19,11 @@ services:
       # Passed from Windows host via setup script
       - HAPIE_HOST_TOTAL_RAM_GB=${HAPIE_HOST_TOTAL_RAM_GB}
       - HAPIE_HOST_CPU_CORES=${HAPIE_HOST_CPU_CORES}
+      - HAPIE_HOST_CPU_THREADS=${HAPIE_HOST_CPU_THREADS}
+      - HAPIE_HOST_CPU_BRAND=${HAPIE_HOST_CPU_BRAND}
     restart: unless-stopped
     networks:
       - hapie-network
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 8G
     # GPU support (uncomment if you have NVIDIA GPU)
     # runtime: nvidia
     # environment:

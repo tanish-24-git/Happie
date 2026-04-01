@@ -150,26 +150,7 @@ export interface SaveApiKeyRequest {
   api_key: string;
 }
 
-// Image Generation Interfaces
-export interface ImageGenRequest {
-  prompt: string;
-  negative_prompt?: string;
-  width?: number;
-  height?: number;
-  steps?: number;
-  guidance_scale?: number;
-}
 
-export interface ImageResponse {
-  image_base64: string;
-  metadata: {
-    model_used: string;
-    generation_time_ms: number;
-    width: number;
-    height: number;
-    steps: number;
-  };
-}
 
 
 
@@ -361,13 +342,7 @@ class ApiClient {
     });
   }
 
-  // Image Generation API
-  async generateImage(request: ImageGenRequest): Promise<ImageResponse> {
-    return this.request<ImageResponse>('/api/image/generate', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-  }
+
 
 
 }
@@ -400,6 +375,6 @@ export const {
   validateApiKey,
   deleteApiKey,
   factoryReset,
-  generateImage,
+
 
 } = apiClient;

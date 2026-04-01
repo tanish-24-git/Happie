@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import { MessageSquare, Repeat, ImageIcon, Info, Settings, Cpu, Box } from "lucide-react"
+import { MessageSquare, Repeat, Info, Settings, Cpu, Box } from "lucide-react"
 
 import {
   Sidebar,
@@ -34,16 +34,7 @@ const data = {
         },
       ],
     },
-    {
-      title: "Capabilities",
-      items: [
-        {
-          title: "Image Generation",
-          url: "/image",
-          icon: ImageIcon,
-        },
-      ],
-    },
+
     {
       title: "Infrastructure",
       items: [

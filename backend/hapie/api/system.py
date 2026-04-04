@@ -175,6 +175,46 @@ async def get_system_full_status():
             "active": active_model["name"] if active_model else None,
             "active_id": active_model["id"] if active_model else None,
             "loaded_count": len(loaded_models),
-            "loaded_ids": loaded_models
+            "loaded_ids": loaded_models,
+            "active_quantization": _extract_quantization(active_model) if active_model else None,
         }
     }
+
+
+def _extract_quantization(model: dict) -> str | None:
+    """
+    Extract quantization type from model metadata or filename.
+    Returns a human-readable string like 'q4_k_m', 'q8_0', etc.
+    """
+    if not model:
+        return None
+    
+    # Check metadata first
+    meta = model.get("metadata") or {}
+    if meta.get("quantization"):
+        return meta["quantization"]
+    
+    # Try to infer from model_path or filename
+    source = ""
+    if meta.get("filename"):
+        source = meta["filename"].lower()
+    elif model.get("model_path"):
+        source = str(model["model_path"]).lower()
+    elif model.get("name"):
+        source = model["name"].lower()
+    
+    # Common quantization patterns (longest first for specificity)
+    QUANT_PATTERNS = [
+        "q8_0", "q6_k", "q5_k_m", "q5_k_s", "q5_1", "q5_0",
+        "q4_k_m", "q4_k_s", "q4_k", "q4_0", "q4_1",
+        "q3_k_m", "q3_k_s", "q3_k_l", "q3_k",
+        "q2_k", "q1_k", "q1",
+        "f32", "f16", "bf16",
+        "int8", "int4",
+    ]
+    
+    for pattern in QUANT_PATTERNS:
+        if pattern in source.replace(".", "_").replace("-", "_"):
+            return pattern
+    
+    return None

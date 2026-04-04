@@ -227,6 +227,9 @@ class ModelManager:
         # Get file size
         size_mb = Path(local_path).stat().st_size / (1024 * 1024)
         
+        # Detect quantization from filename
+        quant = self._detect_quantization(filename)
+
         # Register model
         return self.register_model(
             model_id=model_id,
@@ -238,9 +241,26 @@ class ModelManager:
             size_mb=size_mb,
             metadata={
                 "repo_id": repo_id,
-                "filename": filename
+                "filename": filename,
+                "quantization": quant,
             }
         )
+
+    @staticmethod
+    def _detect_quantization(filename: str) -> str | None:
+        """Extract quantization type from GGUF filename."""
+        source = filename.lower().replace(".", "_").replace("-", "_")
+        patterns = [
+            "q8_0", "q6_k", "q5_k_m", "q5_k_s", "q5_1", "q5_0",
+            "q4_k_m", "q4_k_s", "q4_k", "q4_0", "q4_1",
+            "q3_k_m", "q3_k_s", "q3_k_l", "q3_k",
+            "q2_k", "q1_k", "q1",
+            "f32", "f16", "bf16",
+        ]
+        for p in patterns:
+            if p.replace("_", "") in source.replace("_", ""):
+                return p
+        return None
     
     async def pull_model_stream(
         self,
@@ -339,6 +359,7 @@ class ModelManager:
             local_path = await future
             
             size_mb = Path(local_path).stat().st_size / (1024 * 1024)
+            quant = self._detect_quantization(filename)
             self.register_model(
                 model_id=model_id,
                 name=name,
@@ -347,7 +368,7 @@ class ModelManager:
                 backend="llama.cpp",
                 model_path=local_path,
                 size_mb=size_mb,
-                metadata={"repo_id": repo_id, "filename": filename}
+                metadata={"repo_id": repo_id, "filename": filename, "quantization": quant}
             )
             
             yield {

@@ -282,6 +282,13 @@ class ApiClient {
     });
   }
 
+  async resolveHfRepo(repoId: string): Promise<{ repo_id: string; files: any[]; total: number }> {
+    return this.request('/api/models/resolve-hf', {
+      method: 'POST',
+      body: JSON.stringify({ repo_id: repoId }),
+    });
+  }
+
   async recommendModels(data: { query: string; hardware?: any }): Promise<{ recommendations: any[] }> {
     return this.request('/api/models/recommend', {
       method: 'POST',

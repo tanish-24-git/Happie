@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import { MessageSquare, Repeat, Info, Settings, Cpu, Box } from "lucide-react"
+import { MessageSquare, Repeat, Info, Settings, Cpu, Box, Network } from "lucide-react"
 
 import {
   Sidebar,
@@ -34,7 +34,16 @@ const data = {
         },
       ],
     },
-
+    {
+      title: "Workflows",
+      items: [
+        {
+          title: "Fine-Tuning",
+          url: "/finetune",
+          icon: Network,
+        },
+      ],
+    },
     {
       title: "Infrastructure",
       items: [

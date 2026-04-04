@@ -1,6 +1,6 @@
 "use client"
 
-import { Moon, Sun, Key, RefreshCw, AlertTriangle, Shield, Terminal } from "lucide-react"
+import { Moon, Sun, Key, RefreshCw, AlertTriangle, Shield, Terminal, Zap } from "lucide-react"
 import { useTheme } from "next-themes"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -122,41 +122,20 @@ export function SettingsView() {
               </h3>
               <p className="text-sm text-muted-foreground">Manage keys for cloud-based inference providers.</p>
             </div>
-            <Card className="bg-muted/5">
-              <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
-                    Google / Gemini API Key
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input type="password" placeholder="AIzaSy..." className="font-mono text-xs" />
-                    <Button variant="outline" size="sm">
-                      Update
-                    </Button>
-                  </div>
+            <Card className="bg-muted/5 border-dashed">
+              <CardContent className="pt-12 pb-12 flex flex-col items-center justify-center text-center space-y-3">
+                <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-amber-500" />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
-                    OpenAI API Key
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input type="password" placeholder="sk-••••••••••••••••" className="font-mono text-xs" />
-                    <Button variant="outline" size="sm">
-                      Update
-                    </Button>
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold tracking-tight">Cloud Provider Integration</p>
+                  <p className="text-xs text-muted-foreground max-w-[240px]">
+                    Direct integration for OpenAI, Gemini, and Anthropic is currently in development.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
-                    Anthropic API Key
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input type="password" placeholder="sk-ant-••••••••••••••••" className="font-mono text-xs" />
-                    <Button variant="outline" size="sm">
-                      Update
-                    </Button>
-                  </div>
-                </div>
+                <Badge variant="outline" className="text-[10px] uppercase tracking-widest bg-amber-500/5 text-amber-500 border-amber-500/20">
+                  Coming Soon
+                </Badge>
               </CardContent>
             </Card>
           </section>

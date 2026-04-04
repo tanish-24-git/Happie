@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Cpu, HardDrive, Zap, Activity, ShieldCheck, Thermometer, Database } from "lucide-react"
+import { Cpu, HardDrive, Zap, Activity, ShieldCheck, Thermometer, Database, BrainCircuit, Layers } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -11,12 +11,18 @@ import apiClient, { SystemInfo as SystemInfoType } from "@/lib/api"
 export function SystemInfo() {
   const [systemInfo, setSystemInfo] = React.useState<SystemInfoType | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const [fullStatus, setFullStatus] = React.useState<any | null>(null)
 
   React.useEffect(() => {
     const loadInfo = async () => {
       try {
         const info = await apiClient.getSystemInfo()
         setSystemInfo(info)
+        // Also fetch full status for active model / quantization
+        try {
+          const full = await fetch("http://localhost:8000/api/system/status/full")
+          if (full.ok) setFullStatus(await full.json())
+        } catch {}
       } catch (error) {
         console.error("Failed to load system info", error)
       } finally {
@@ -24,7 +30,6 @@ export function SystemInfo() {
       }
     }
     loadInfo()
-    // Poll every 5s
     const interval = setInterval(loadInfo, 5000)
     return () => clearInterval(interval)
   }, [])
@@ -107,18 +112,65 @@ export function SystemInfo() {
             <Card className="bg-muted/10 border-muted">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  System RAM
+                  System RAM (LIVE)
                 </CardTitle>
                 <HardDrive className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold font-mono">{capability.total_ram_gb.toFixed(1)} GB</div>
+                <div className="text-2xl font-bold font-mono">{(capability.total_ram_gb - capability.available_ram_gb).toFixed(1)} <span className="text-xs text-muted-foreground">/ {capability.total_ram_gb.toFixed(1)} GB</span></div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Used: {(capability.total_ram_gb - capability.available_ram_gb).toFixed(1)} GB • Free: {capability.available_ram_gb.toFixed(1)} GB
+                  Active System Consumption
                 </p>
               </CardContent>
             </Card>
           </div>
+
+          {/* Active Model + Quantization row */}
+          {fullStatus?.models && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="bg-muted/10 border-muted">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Active Model</CardTitle>
+                  <BrainCircuit className="h-4 w-4 text-violet-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-base font-bold font-mono truncate">
+                    {fullStatus.models.active || <span className="text-muted-foreground">None loaded</span>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {fullStatus.models.active_id ? `ID: ${fullStatus.models.active_id}` : "Pull a model to start"}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-muted/10 border-muted">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantization</CardTitle>
+                  <Layers className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  {fullStatus.models.active_quantization ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold font-mono uppercase">
+                          {fullStatus.models.active_quantization.toUpperCase()}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-500 border-blue-500/20">
+                          {fullStatus.inference?.quantization_bits ? `${fullStatus.inference.quantization_bits}-bit` : "GGUF"}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">Active model quantization format</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-base font-bold font-mono text-muted-foreground">N/A</div>
+                      <p className="text-[10px] text-muted-foreground mt-1">No model loaded</p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="bg-muted/5 border-muted">
@@ -129,8 +181,15 @@ export function SystemInfo() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground uppercase font-medium">CPU Load</span>
+                    <span className="font-mono">{fullStatus?.hardware?.cpu?.load_percent?.toFixed(1) || "0.0"}%</span>
+                  </div>
+                  <Progress value={fullStatus?.hardware?.cpu?.load_percent || 0} className="h-1" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground uppercase font-medium">RAM Utilization</span>
-                    <span className="font-mono">{ramPercent.toFixed(0)}%</span>
+                    <span className="font-mono">{ramPercent.toFixed(1)}%</span>
                   </div>
                   <Progress value={ramPercent} className="h-1" />
                 </div>
@@ -143,13 +202,6 @@ export function SystemInfo() {
                     <Progress value={vramPercent} className="h-1" />
                   </div>
                 )}
-                <div className="space-y-2">
-                   <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground uppercase font-medium">Context Usage</span>
-                      <span className="font-mono">{policy.max_context_length / 1024}K Limit</span>
-                   </div>
-                   <Progress value={10} className="h-1" />
-                </div>
               </CardContent>
             </Card>
 

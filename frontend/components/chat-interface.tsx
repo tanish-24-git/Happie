@@ -779,9 +779,6 @@ export function ChatInterface() {
             <Zap className="h-3 w-3 text-amber-500" />
             <span>{backendLabel}</span>
           </div>
-          <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-            Single Model Mode
-          </Badge>
         </div>
       </div>
 

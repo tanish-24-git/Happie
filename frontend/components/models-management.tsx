@@ -223,56 +223,22 @@ export function ModelsManagement() {
               </TabsContent>
 
               <TabsContent value="cloud" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">
-                    Cloud models require API keys and incur usage-based costs.
-                  </p>
-                  <Button onClick={() => setShowAddDialog(true)} className="gap-2">
-                    <Plus className="h-4 w-4" /> Add Cloud Model
-                  </Button>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {cloudModels.map((model) => (
-                    <Card key={model.id} className="relative overflow-hidden">
-                      <CardHeader className="pb-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 mb-2">
-                          <Globe className="h-5 w-5 text-white" />
-                        </div>
-                        <CardTitle className="text-lg">{model.name}</CardTitle>
-                        <CardDescription className="text-xs uppercase tracking-wider">
-                          {model.provider} • Usage-based
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pb-4">
-                        <div className="flex items-center gap-2 text-xs">
-                          <CheckCircle2 className="h-3 w-3 text-green-500" />
-                          <span className="text-green-600 dark:text-green-400">Configured</span>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="pt-0 border-t bg-muted/10">
-                        <div className="flex w-full items-center justify-between py-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDelete(model.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" /> Remove
-                          </Button>
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  ))}
-
-                  {cloudModels.length === 0 && (
-                    <div className="col-span-full text-center py-12 text-muted-foreground">
-                      <Globe className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                      <p className="text-sm">No cloud models configured</p>
-                      <p className="text-xs mt-2">Click "Add Cloud Model" to get started</p>
+                <Card className="bg-muted/5 border-dashed">
+                  <CardContent className="pt-12 pb-12 flex flex-col items-center justify-center text-center space-y-3">
+                    <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                      <Globe className="h-5 w-5 text-amber-500" />
                     </div>
-                  )}
-                </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold tracking-tight">Cloud Models Integration</p>
+                      <p className="text-xs text-muted-foreground max-w-[280px]">
+                        Support for OpenAI, Gemini, Anthropic, and Grok API endpoints is coming soon. Focus is currently on local execution.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-widest bg-amber-500/5 text-amber-500 border-amber-500/20">
+                      Coming Soon
+                    </Badge>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>

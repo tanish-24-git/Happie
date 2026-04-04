@@ -112,14 +112,14 @@ export function SystemInfo() {
             <Card className="bg-muted/10 border-muted">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  System RAM
+                  System RAM (LIVE)
                 </CardTitle>
                 <HardDrive className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold font-mono">{capability.total_ram_gb.toFixed(1)} GB</div>
+                <div className="text-2xl font-bold font-mono">{(capability.total_ram_gb - capability.available_ram_gb).toFixed(1)} <span className="text-xs text-muted-foreground">/ {capability.total_ram_gb.toFixed(1)} GB</span></div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Used: {(capability.total_ram_gb - capability.available_ram_gb).toFixed(1)} GB • Free: {capability.available_ram_gb.toFixed(1)} GB
+                  Active System Consumption
                 </p>
               </CardContent>
             </Card>
@@ -181,8 +181,15 @@ export function SystemInfo() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground uppercase font-medium">CPU Load</span>
+                    <span className="font-mono">{fullStatus?.hardware?.cpu?.load_percent?.toFixed(1) || "0.0"}%</span>
+                  </div>
+                  <Progress value={fullStatus?.hardware?.cpu?.load_percent || 0} className="h-1" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground uppercase font-medium">RAM Utilization</span>
-                    <span className="font-mono">{ramPercent.toFixed(0)}%</span>
+                    <span className="font-mono">{ramPercent.toFixed(1)}%</span>
                   </div>
                   <Progress value={ramPercent} className="h-1" />
                 </div>
@@ -195,13 +202,6 @@ export function SystemInfo() {
                     <Progress value={vramPercent} className="h-1" />
                   </div>
                 )}
-                <div className="space-y-2">
-                   <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground uppercase font-medium">Context Usage</span>
-                      <span className="font-mono">{policy.max_context_length / 1024}K Limit</span>
-                   </div>
-                   <Progress value={10} className="h-1" />
-                </div>
               </CardContent>
             </Card>
 

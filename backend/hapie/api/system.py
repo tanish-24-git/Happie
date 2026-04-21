@@ -95,6 +95,17 @@ async def get_system_full_status():
     active_model = model_manager.get_active_model()
     loaded_models = inference_engine.get_loaded_models()
 
+    available_ram = capability.available_ram_gb
+    total_vram = (capability.gpu_vram_gb or 0) * capability.gpu_count
+
+    max_ram_f16 = round(available_ram / (2.0 * 1.2), 1)
+    max_ram_q8 = round(available_ram / (1.0 * 1.2), 1)
+    max_ram_q4 = round(available_ram / (0.5 * 1.2), 1)
+
+    max_gpu_f16 = round(total_vram / (2.0 * 1.2), 1) if total_vram > 0 else 0
+    max_gpu_q8 = round(total_vram / (1.0 * 1.2), 1) if total_vram > 0 else 0
+    max_gpu_q4 = round(total_vram / (0.5 * 1.2), 1) if total_vram > 0 else 0
+
     return {
         "status": "running",
         "hardware": {
@@ -105,13 +116,15 @@ async def get_system_full_status():
                 "architecture": capability.cpu_arch
             },
             "memory": {
-                "total_gb": round(capability.total_ram_gb, 2)
+                "total_gb": round(capability.total_ram_gb, 2),
+                "available_gb": round(available_ram, 2)
             },
             "gpu": {
                 "vendor": capability.gpu_vendor.value if hasattr(capability.gpu_vendor, 'value') else str(capability.gpu_vendor),
                 "name": capability.gpu_name,
                 "vram_gb": capability.gpu_vram_gb,
-                "count": capability.gpu_count
+                "count": capability.gpu_count,
+                "total_vram_gb": round(total_vram, 2)
             }
         },
         "inference": {
@@ -127,6 +140,18 @@ async def get_system_full_status():
             "loaded_count": len(loaded_models),
             "loaded_ids": loaded_models,
             "active_quantization": _extract_quantization(active_model) if active_model else None,
+        },
+        "inference_limits": {
+            "ram": {
+                "f16": max_ram_f16,
+                "q8": max_ram_q8,
+                "q4": max_ram_q4
+            },
+            "gpu": {
+                "f16": max_gpu_f16,
+                "q8": max_gpu_q8,
+                "q4": max_gpu_q4
+            } if total_vram > 0 else None
         }
     }
 

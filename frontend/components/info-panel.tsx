@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Cpu, HardDrive, Layout, Server, Zap, ChevronRight, ChevronLeft, Activity, Cloud } from "lucide-react"
+import { Cpu, HardDrive, Layout, Zap, ChevronRight, ChevronLeft, Cloud } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -12,9 +12,7 @@ import apiClient, { SystemInfo } from "@/lib/api"
 export function InfoPanel() {
   const [isOpen, setIsOpen] = React.useState(true)
   const [systemInfo, setSystemInfo] = React.useState<SystemInfo | null>(null)
-  const [cpuLoad, setCpuLoad] = React.useState(0)
 
-  // Poll system info every 2 seconds
   React.useEffect(() => {
     const loadSystemInfo = async () => {
       try {
@@ -25,26 +23,7 @@ export function InfoPanel() {
       }
     }
 
-    const loadMetrics = async () => {
-      try {
-        const metrics = await apiClient.getSystemMetrics()
-        setCpuLoad(metrics.cpu_percent)
-      } catch (error) {
-        // Fallback or ignore
-      }
-    }
-
     loadSystemInfo()
-    loadMetrics()
-    
-    // Poll metrics more frequently (3s) than full info refresh (now 5s to reduce load)
-    const infoInterval = setInterval(loadSystemInfo, 5000)
-    const metricsInterval = setInterval(loadMetrics, 3000)
-
-    return () => {
-      clearInterval(infoInterval)
-      clearInterval(metricsInterval)
-    }
   }, [])
 
   if (!systemInfo) {
@@ -69,16 +48,6 @@ export function InfoPanel() {
 
   const { capability, policy } = systemInfo
 
-  // Calculate usage percentages
-  const totalRam = capability.total_ram_gb
-  const availableRam = capability.available_ram_gb
-  const usedRam = totalRam - availableRam
-  const ramUsagePercent = (usedRam / totalRam) * 100
-  
-  const vramUsagePercent = capability.gpu_vram_gb 
-    ? Math.min((capability.gpu_vram_gb * 0.3) / capability.gpu_vram_gb * 100, 100) // Estimate
-    : 0
-
   const isCloudBackend = policy.backend === 'cloud_api'
   const backendDisplay = isCloudBackend ? "Cloud API" : policy.backend.toUpperCase()
 
@@ -99,7 +68,7 @@ export function InfoPanel() {
         <ScrollArea className="flex-1 overflow-hidden">
           <div className="flex flex-col gap-6 p-6">
             <div className="space-y-4">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">System Status</h3>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">System Info</h3>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">{capability.cpu_brand}</span>
@@ -157,60 +126,22 @@ export function InfoPanel() {
             <div className="space-y-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hardware Summary</h3>
               <div className="space-y-3">
-                {!isCloudBackend && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <Cpu className="h-3 w-3" />
-                        <span>CPU Load</span>
-                      </div>
-                      <span className="font-mono">{cpuLoad.toFixed(1)}%</span>
-                    </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                      <div 
-                        className={`h-full transition-all ${cpuLoad > 80 ? 'bg-red-500' : cpuLoad > 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                        style={{ width: `${Math.min(cpuLoad, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {capability.gpu_vram_gb && capability.gpu_vram_gb > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <Activity className="h-3 w-3" />
-                        <span>VRAM Usage</span>
-                      </div>
-                      <span className="font-mono">
-                        {(capability.gpu_vram_gb * vramUsagePercent / 100).toFixed(1)} / {capability.gpu_vram_gb.toFixed(1)} GB
-                      </span>
-                    </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                      <div 
-                        className="h-full bg-primary transition-all" 
-                        style={{ width: `${vramUsagePercent}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <HardDrive className="h-3 w-3" />
-                      <span>RAM Usage</span>
+                      <Zap className="h-3 w-3" />
+                      <span>VRAM</span>
                     </div>
-                    <span className="font-mono">
-                      {usedRam.toFixed(1)} / {totalRam.toFixed(1)} GB
-                    </span>
+                    <span className="font-mono">{capability.gpu_vram_gb.toFixed(1)} GB</span>
                   </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                    <div 
-                      className="h-full bg-primary transition-all" 
-                      style={{ width: `${ramUsagePercent}%` }}
-                    />
+                )}
+
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="h-3 w-3" />
+                    <span>RAM</span>
                   </div>
+                  <span className="font-mono">{capability.total_ram_gb.toFixed(1)} GB</span>
                 </div>
               </div>
             </div>

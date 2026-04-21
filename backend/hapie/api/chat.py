@@ -143,18 +143,17 @@ async def single_chat(request: ChatRequest):
         hw = status_data["hardware"]
         inf = status_data["inference"]
         
-        result_text = f"""### System Status Report
+        result_text = f"""### System Info
 
 **HARDWARE**
 - **CPU:** {hw['cpu']['brand']} ({hw['cpu']['cores_physical']} cores, {hw['cpu']['threads']} threads)
-- **RAM:** {hw['memory']['available_gb']}GB available / {hw['memory']['total_gb']}GB total ({hw['memory']['used_percent']:.1f}% used)
+- **RAM:** {hw['memory']['total_gb']}GB total
 - **GPU:** {hw['gpu']['vendor']} {hw['gpu']['name']} ({hw['gpu']['vram_gb']}GB VRAM)
 
 **INFERENCE ENGINE**
 - **Backend:** {inf['backend'].upper()}
 - **GPU Layers:** {inf['gpu_layers']}
 - **Max Context:** {inf['max_context']} tokens
-- **Status:** ✅ RUNNING
 """
         
         model_id = "SYSTEM_STATUS"

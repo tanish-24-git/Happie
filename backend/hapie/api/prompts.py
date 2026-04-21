@@ -24,25 +24,9 @@ def get_base_system_prompt() -> str:
     """
     MINIMAL system prompt - NO hardware details.
     
-    Hardware context causes model to echo system specs in responses.
-    Users only care about hardware when explicitly asking or pulling models.
-    
-    This prompt should:
-    - Not mention CPU, RAM, GPU
-    - Not mention backend type
-    - Focus ONLY on behavior rules
-    - Be agnostic to hardware
+    Removed opinionated behavior rules per user request to allow raw interaction.
     """
-    return """You are a helpful AI assistant.
-
-BEHAVIORAL INSTRUCTIONS:
-1. Answer questions directly and helpfully.
-2. Do NOT use markers like "Human:", "Assistant:", "User:", "Q:", "A:".
-3. Do NOT echo or repeat conversation history.
-4. For code: provide clean, working examples without preamble.
-5. Answer naturally - provide only the response, nothing extra.
-
-Be concise, accurate, and helpful."""
+    return ""
 
 
 def get_conversation_context(
@@ -124,18 +108,16 @@ def build_single_chat_prompt(
     
     Includes:
     1. Base system prompt (behavioral rules)
-    2. Conversation context (narrative format)
+    2. Conversation context
     3. Current user input
-    
-    NO role markers, NO echo patterns, NO model names.
     """
     base = get_base_system_prompt()
     context = get_conversation_context(conversation_id)
     
     if context:
-        full_prompt = f"{base}\n{context}\n\nUser's current request:\n{user_prompt}"
+        full_prompt = f"{base}\n{context}\n\nUser:\n{user_prompt}\n\nAssistant:\n"
     else:
-        full_prompt = f"{base}\n\nUser's request:\n{user_prompt}"
+        full_prompt = f"{base}\n\nUser:\n{user_prompt}\n\nAssistant:\n"
     
     return full_prompt
 

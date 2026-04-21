@@ -160,7 +160,8 @@ class InferenceEngine:
             temperature=temperature,
             top_p=top_p,
             echo=False,
-            stream=stream
+            stream=stream,
+            stop=["\nUser:", "User:", "\nuser:", "user:", "Human:"]
         )
         
         if stream:

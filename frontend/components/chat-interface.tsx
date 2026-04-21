@@ -4,7 +4,7 @@ import * as React from "react"
 import {
   Send, Bot, ChevronDown, Monitor, Cloud, Zap, DollarSign,
   AlertCircle, X, Download, Cpu, Server, Layers, Sparkles,
-  CheckCircle2, AlertTriangle, RotateCcw, Package
+  CheckCircle2, AlertTriangle, RotateCcw, Package, HardDrive
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -207,50 +207,55 @@ function QuantSelectionTable({
   onSelect: (repoId: string, file: QuantFile) => void
   onBack: () => void
 }) {
-  const practicalBadge = (p: boolean | null) => {
-    if (p === true) return <span className="text-emerald-500 font-semibold">✓ Yes</span>
-    if (p === false) return <span className="text-red-500 font-semibold">✗ No</span>
-    return <span className="text-amber-500 font-semibold">~ Caution</span>
+  const getFitBadge = (status: string, runMem: number) => {
+    if (status === "gpu") return <Badge variant="outline" className="text-[9px] border-amber-500/40 bg-amber-500/10 text-amber-500 gap-1"><Zap className="h-2 w-2" /> GPU FIT</Badge>
+    if (status === "ram") return <Badge variant="outline" className="text-[9px] border-emerald-500/40 bg-emerald-500/10 text-emerald-500 gap-1"><HardDrive className="h-2 w-2" /> RAM FIT</Badge>
+    return <Badge variant="outline" className="text-[9px] border-red-500/40 bg-red-500/10 text-red-500 gap-1"><AlertTriangle className="h-2 w-2" /> EXCEEDS</Badge>
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-blue-500/20 overflow-hidden text-xs">
-      <div className="px-4 py-2 bg-blue-500/5 border-b border-blue-500/15 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Layers className="h-3.5 w-3.5 text-blue-400" />
-          <span className="font-semibold text-sm">Select Quantization Format</span>
-          <code className="text-[10px] font-mono text-muted-foreground">{repoId}</code>
+    <div className="mt-3 rounded-xl border border-blue-500/20 overflow-hidden text-xs bg-muted/5">
+      <div className="px-4 py-2.5 bg-blue-500/5 border-b border-blue-500/15 flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="h-3.5 w-3.5 text-blue-400" />
+            <span className="font-semibold text-sm">Hardware-Matched Quantization</span>
+          </div>
+          <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 gap-1" onClick={onBack}>
+            ← Back
+          </Button>
         </div>
-        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 gap-1" onClick={onBack}>
-          ← Back
-        </Button>
+        <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+          <code className="text-blue-400/80">{repoId}</code>
+          <span>&bull;</span>
+          <span>Predictions based on 1.2x architecture overhead</span>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-muted-foreground/10 bg-muted/15">
-              {["Quant", "Bits", "Practical?", "Quality", "Notes", ""].map((h, i) => (
+              {["Format", "Size", "Run RAM", "Fit Status", "Quality", ""].map((h, i) => (
                 <th key={i} className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wide text-[10px]">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {files.map((f, i) => (
-              <tr key={i} className={cn(
-                "border-b border-muted-foreground/8 transition-colors",
-                f.practical === false ? "opacity-40 cursor-not-allowed" : "hover:bg-blue-500/5 cursor-pointer"
-              )}>
-                <td className="px-3 py-2.5 font-mono font-bold text-blue-300">{f.quant ?? "—"}</td>
-                <td className="px-3 py-2.5 font-mono">{f.quant_bits ? `${f.quant_bits}b` : "—"}</td>
-                <td className="px-3 py-2.5">{practicalBadge(f.practical)}</td>
-                <td className="px-3 py-2.5">{f.quality}</td>
-                <td className="px-3 py-2.5 text-muted-foreground max-w-[200px] truncate" title={f.note}>{f.note}</td>
+            {files.map((f: any, i) => (
+              <tr key={i} className="border-b border-muted-foreground/8 transition-colors hover:bg-blue-500/5">
+                <td className="px-3 py-2.5 font-mono font-bold text-blue-300">{(f.quant || f.filename).replace(".gguf", "").toUpperCase()}</td>
+                <td className="px-3 py-2.5 font-mono text-muted-foreground">{f.size_gb}GB</td>
+                <td className="px-3 py-2.5 font-mono text-muted-foreground">{f.run_mem_gb}GB</td>
+                <td className="px-3 py-2.5">{getFitBadge(f.fit_status, f.run_mem_gb)}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{f.quality}</td>
                 <td className="px-3 py-2.5">
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-6 text-[10px] px-2 gap-1 border-blue-500/30 hover:bg-blue-500/15 hover:text-blue-300 disabled:opacity-30"
-                    disabled={f.practical === false}
+                    variant={f.fit_status === "none" ? "ghost" : "outline"}
+                    className={cn(
+                      "h-6 text-[10px] px-2 gap-1",
+                      f.fit_status === "none" ? "text-red-400 hover:text-red-300 hover:bg-red-500/10" : "border-blue-500/30 hover:bg-blue-500/15"
+                    )}
                     onClick={() => onSelect(repoId, f)}
                   >
                     <Download className="h-2.5 w-2.5" /> Pull
@@ -261,9 +266,10 @@ function QuantSelectionTable({
           </tbody>
         </table>
       </div>
-      <div className="px-4 py-2 text-[10px] text-muted-foreground bg-muted/5 border-t border-muted-foreground/8">
-        💡 Recommended: <code className="text-foreground/70">q4_k_m</code> for most systems &bull;
-        Use <code className="text-foreground/70">q8_0</code> if you have plenty of RAM
+      <div className="px-4 py-2.5 text-[10px] text-muted-foreground bg-blue-500/5 border-t border-muted-foreground/8 flex gap-3 italic">
+        <div className="flex items-center gap-1"><Zap className="h-3 w-3 text-amber-500" /> GPU: Maximum Speed</div>
+        <div className="flex items-center gap-1"><HardDrive className="h-3 w-3 text-emerald-500" /> RAM: Standard Speed</div>
+        <div className="flex items-center gap-1 ml-auto"><AlertTriangle className="h-3 w-3 text-red-500" /> Red rows will likely cause system OOM.</div>
       </div>
     </div>
   )

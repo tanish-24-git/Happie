@@ -80,79 +80,46 @@ export function InfoPanel() {
               </div>
             </div>
 
-            <Separator />
-
             <div className="space-y-4">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Backend Engine</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm">
-                    {isCloudBackend ? (
-                      <Cloud className="h-4 w-4 text-blue-500" />
-                    ) : (
-                      <Zap className="h-4 w-4 text-amber-500" />
-                    )}
-                    <span>{backendDisplay}</span>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px] h-4">
-                    Active
-                  </Badge>
-                </div>
-
-                {!isCloudBackend && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-md border bg-muted/30 p-2">
-                      <div className="text-[10px] text-muted-foreground uppercase">GPU Layers</div>
-                      <div className="text-sm font-mono">{policy.gpu_layers}</div>
-                    </div>
-                    <div className="rounded-md border bg-muted/30 p-2">
-                      <div className="text-[10px] text-muted-foreground uppercase">Context</div>
-                      <div className="text-sm font-mono">{(policy.max_context_length / 1000).toFixed(0)}K</div>
-                    </div>
-                  </div>
-                )}
-
-                {policy.use_quantization && (
-                  <div className="rounded-md border bg-muted/30 p-2">
-                    <div className="text-[10px] text-muted-foreground uppercase">Quantization</div>
-                    <div className="text-sm font-mono">{policy.quantization_bits}-bit</div>
-                  </div>
-                )}
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Max Model Capacity</h3>
+              <div className="text-[10px] text-muted-foreground leading-tight">
+                Max limit in Billions of Parameters (B) based on free memory and 1.2x architecture overhead.
               </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hardware Summary</h3>
-              <div className="space-y-3">
-                {capability.gpu_vram_gb && capability.gpu_vram_gb > 0 && (
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-3 w-3" />
-                      <span>VRAM</span>
-                    </div>
-                    <span className="font-mono">{capability.gpu_vram_gb.toFixed(1)} GB</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="h-3 w-3" />
-                    <span>RAM</span>
-                  </div>
-                  <span className="font-mono">{capability.total_ram_gb.toFixed(1)} GB</span>
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Current Mode</h3>
-              <div className="flex items-center gap-2 text-sm">
-                <Layout className="h-4 w-4" />
-                <span>Single Model Mode</span>
+              <div className="border rounded-md overflow-hidden bg-muted/5">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-muted/30 border-b">
+                    <tr>
+                      <th className="p-2 font-medium">Format</th>
+                      <th className="p-2 font-medium">GPU Fit</th>
+                      <th className="p-2 font-medium">RAM Fit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y font-mono text-[11px]">
+                    {[
+                      { name: "F32 (Full)", bpp: 4.0 },
+                      { name: "F16 (Half)", bpp: 2.0 },
+                      { name: "Q8", bpp: 1.0 },
+                      { name: "Q6", bpp: 0.75 },
+                      { name: "Q5", bpp: 0.625 },
+                      { name: "Q4", bpp: 0.5 },
+                      { name: "Q3", bpp: 0.375 },
+                      { name: "Q2", bpp: 0.25 },
+                    ].map(fmt => {
+                      const overhead = fmt.bpp * 1.2;
+                      const ramFit = (capability.available_ram_gb / overhead).toFixed(1);
+                      const gpuVram = (capability.gpu_vram_gb || 0) * capability.gpu_count;
+                      const gpuFit = gpuVram > 0 ? (gpuVram / overhead).toFixed(1) + "B" : "-";
+                      
+                      return (
+                        <tr key={fmt.name} className="hover:bg-muted/20">
+                          <td className="p-2 text-muted-foreground">{fmt.name}</td>
+                          <td className="p-2 text-amber-500">{gpuFit}</td>
+                          <td className="p-2 text-emerald-500">{ramFit}B</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

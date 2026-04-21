@@ -158,6 +158,69 @@ export function SystemInfo() {
             </div>
           )}
 
+          {fullStatus?.inference_limits && (
+            <Card className="bg-muted/5 border-muted">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold">Maximum Model Capacities</CardTitle>
+                <CardDescription className="text-xs">Estimated maximum model sizes (in billions of parameters) you can run based on memory overhead.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <HardDrive className="h-3.5 w-3.5" /> System RAM Fallback ({fullStatus.hardware.memory.available_gb.toFixed(1)} GB Free)
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-muted/30 border rounded-md p-2 flex flex-col items-center">
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase font-mono">Q4 (4-bit)</span>
+                        <span className="text-sm font-bold text-green-500">~{fullStatus.inference_limits.ram.q4}B</span>
+                      </div>
+                      <div className="bg-muted/30 border rounded-md p-2 flex flex-col items-center">
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase font-mono">Q8 (8-bit)</span>
+                        <span className="text-sm font-bold text-emerald-500">~{fullStatus.inference_limits.ram.q8}B</span>
+                      </div>
+                      <div className="bg-muted/30 border rounded-md p-2 flex flex-col items-center">
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase font-mono">F16 (16-bit)</span>
+                        <span className="text-sm font-bold text-amber-500">~{fullStatus.inference_limits.ram.f16}B</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {fullStatus.inference_limits.gpu ? (
+                    <div className="space-y-3">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Activity className="h-3.5 w-3.5" /> High-Speed GPU Offload ({fullStatus.hardware.gpu.total_vram_gb.toFixed(1)} GB VRAM)
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-muted/30 border rounded-md p-2 flex flex-col items-center">
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase font-mono">Q4 (4-bit)</span>
+                          <span className="text-sm font-bold text-green-500">~{fullStatus.inference_limits.gpu.q4}B</span>
+                        </div>
+                        <div className="bg-muted/30 border rounded-md p-2 flex flex-col items-center">
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase font-mono">Q8 (8-bit)</span>
+                          <span className="text-sm font-bold text-emerald-500">~{fullStatus.inference_limits.gpu.q8}B</span>
+                        </div>
+                        <div className="bg-muted/30 border rounded-md p-2 flex flex-col items-center">
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase font-mono">F16 (16-bit)</span>
+                          <span className="text-sm font-bold text-amber-500">~{fullStatus.inference_limits.gpu.f16}B</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Activity className="h-3.5 w-3.5" /> GPU Offload
+                      </div>
+                      <div className="h-full min-h-[60px] flex items-center justify-center border rounded-md border-dashed bg-muted/10">
+                        <span className="text-xs text-muted-foreground">No dedicated GPU VRAM detected.</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="bg-muted/5 border-muted">
             <CardHeader>
               <CardTitle className="text-sm font-semibold">Environment</CardTitle>

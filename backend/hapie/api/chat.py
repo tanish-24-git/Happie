@@ -220,36 +220,9 @@ async def single_chat(request: ChatRequest):
             # Get active chat model (NOT system model)
             model = model_manager.get_active_chat_model()
             
-            # If no chat model exists, use system/Qwen to explain and recommend
+            # If no chat model exists, show a simple onboarding message
             if not model:
-                # User has no chat model yet - provide onboarding
-                capability = detector.detect()
-                
-                # Format hardware info safely
-                gpu_info = "No GPU detected"
-                if capability.gpu_name:
-                    vram = f"{capability.gpu_vram_gb:.1f}GB VRAM" if capability.gpu_vram_gb is not None else "Unknown VRAM"
-                    gpu_info = f"{capability.gpu_vendor.value} {capability.gpu_name} ({vram})"
-                elif capability.gpu_vendor.value != "None":
-                    vram = f"{capability.gpu_vram_gb:.1f}GB VRAM" if capability.gpu_vram_gb is not None else "Unknown VRAM"
-                    gpu_info = f"{capability.gpu_vendor.value} ({vram})"
-
-                result_text = f"""👋 Welcome to HAPIE!
-
-You don't have a chat model loaded yet. To start chatting, you need to download a model first.
-
-**Your System:**
-- RAM: {capability.available_ram_gb:.1f}GB available
-- CPU: {capability.cpu_cores} cores
-- GPU: {gpu_info}
-
-**Recommended Models:**
-- Type `recommend` to see models optimized for your hardware
-- Type `pull phi3` to download Phi-3 (great for coding, ~2.4GB)
-- Type `pull tinyllama` to download TinyLlama (fast, ~700MB)
-
-Once downloaded, you can start chatting!
-"""
+                result_text = "Welcome to HAPIE! You don't have a chat model loaded yet. Please download a model first to start chatting."
                 
                 model_id = "SYSTEM_ONBOARDING"
                 metrics = {"latency_ms": 10, "tokens_generated": len(result_text.split()), "tokens_per_sec": 0, "provider": "system"}

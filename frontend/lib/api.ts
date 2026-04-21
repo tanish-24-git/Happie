@@ -206,10 +206,6 @@ class ApiClient {
     });
   }
 
-  async getSystemMetrics(): Promise<{ cpu_percent: number; memory_percent: number; memory_used_gb: number; memory_total_gb: number }> {
-    return this.request('/api/system/metrics');
-  }
-
   // Models API
   async listModels(): Promise<Model[]> {
     return this.request<Model[]>('/api/models/');

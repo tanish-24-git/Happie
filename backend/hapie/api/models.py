@@ -228,14 +228,15 @@ QUANT_INFO = {
 
 @router.post("/resolve-hf")
 async def resolve_hf_repo(request: dict):
-    """List available GGUF files from a HuggingFace repo."""
-    from huggingface_hub import list_repo_files
-    from hapie.cloud import ApiKeyManager
+    """List available GGUF files and check hardware fit for each."""
+    from huggingface_hub import HfApi
+    from hapie.hardware import HardwareDetector
     
     repo_id = request.get("repo_id", "").strip()
     if not repo_id or "/" not in repo_id:
         raise HTTPException(status_code=400, detail="Invalid repo_id. Must be 'owner/model'.")
 
+    # Get HF Token
     from hapie.cloud import ApiKeyManager
     db_conn = model_manager.db
     session = db_conn.get_session()
@@ -246,31 +247,54 @@ async def resolve_hf_repo(request: dict):
     except: pass
     finally: session.close()
 
+    # Get Hardware Info
+    detector = HardwareDetector()
+    cap = detector.detect()
+    total_vram = (cap.gpu_vram_gb or 0) * cap.gpu_count
+    available_ram = cap.available_ram_gb
+
     try:
-        all_files = list(list_repo_files(repo_id, token=token))
+        api = HfApi(token=token)
+        info = api.model_info(repo_id, files_metadata=True)
+        all_files = info.siblings
     except Exception as e:
         if "401" in str(e) or "403" in str(e):
             raise HTTPException(status_code=401, detail="Repo requires authentication. Check Settings.")
         raise HTTPException(status_code=404, detail=str(e))
 
-    gguf_files = [f for f in all_files if f.lower().endswith(".gguf")]
+    gguf_files = [f for f in all_files if f.rfilename.lower().endswith(".gguf")]
     if not gguf_files:
         raise HTTPException(status_code=422, detail="No GGUF files found.")
 
     annotated = []
-    for fname in sorted(gguf_files):
+    for f in sorted(gguf_files, key=lambda x: x.rfilename):
+        fname = f.rfilename
         fname_l = fname.lower()
+        size_gb = (f.size or 0) / (1024**3)
+        run_mem_gb = size_gb * 1.2  # 1.2x overhead multiplier from math docs
+
+        # Determine fit status
+        fit_status = "none"
+        if total_vram > 0 and run_mem_gb <= total_vram:
+            fit_status = "gpu"
+        elif run_mem_gb <= available_ram:
+            fit_status = "ram"
+
         detected_quant, quant_meta = None, None
         for qkey in sorted(QUANT_INFO.keys(), key=len, reverse=True):
             if qkey in fname_l.replace("_", "") or qkey in fname_l:
                 detected_quant, quant_meta = qkey, QUANT_INFO[qkey]
                 break
+        
         annotated.append({
             "filename": fname,
+            "size_gb": round(size_gb, 2),
+            "run_mem_gb": round(run_mem_gb, 2),
+            "fit_status": fit_status,
             "quant": detected_quant,
             "quant_bits": quant_meta["bits"] if quant_meta else None,
             "quality": quant_meta["quality"] if quant_meta else "Unknown",
-            "practical": quant_meta["practical"] if quant_meta else None,
+            "practical": quant_meta["practical"] if quant_meta else (fit_status != "none"),
             "note": quant_meta["note"] if quant_meta else "",
         })
     return {"repo_id": repo_id, "files": annotated, "total": len(annotated)}
@@ -278,46 +302,49 @@ async def resolve_hf_repo(request: dict):
 
 @router.post("/pull-stream")
 async def pull_model_stream_endpoint(request: dict):
-    """Stream GGUF download progress."""
+    """Stream GGUF download progress with initial quantization selection trigger."""
     from hapie.api.recommend import MODEL_CATALOG, TASK_MAP
     
     query = request.get("query", "").strip()
     direct_repo = request.get("repo_id", "").strip()
     direct_filename = request.get("filename", "").strip()
 
-    repo_id, filename, model_id, name = None, None, None, None
-
-    if direct_repo and direct_filename:
-        repo_id, filename = direct_repo, direct_filename
-        model_id = Path(filename).stem.lower().replace(" ", "-")
-        name = request.get("name") or f"{direct_repo.split('/')[-1]} ({Path(filename).stem})"
-    else:
+    # Normal pull shortcut handling
+    if not direct_repo or not direct_filename:
         raw = query
         for prefix in ["hapie pull ", "/pull ", "pull "]:
             if raw.lower().startswith(prefix):
                 raw = raw[len(prefix):].strip(); break
         
         cq = raw.lower()
+        target_repo = None
+        
         if cq in MODEL_CATALOG:
-            m = MODEL_CATALOG[cq]
-            repo_id, filename, model_id, name = m["repo_id"], m["filename"], cq, m["name"]
+            target_repo = MODEL_CATALOG[cq]["repo_id"]
         elif cq in TASK_MAP:
-            mid = TASK_MAP[cq]
-            m = MODEL_CATALOG[mid]
-            repo_id, filename, model_id, name = m["repo_id"], m["filename"], mid, m["name"]
-        elif ":" in raw:
-            p = raw.split(":", 1)
-            repo_id, filename = p[0].strip(), p[1].strip()
-            model_id = Path(filename).stem.lower()
-            name = filename
+            target_repo = MODEL_CATALOG[TASK_MAP[cq]]["repo_id"]
         elif re.match(r'^[\w.-]+/[\w.-][\w./-]*$', raw) and ".gguf" not in raw.lower():
+            target_repo = raw
+            
+        if target_repo:
             async def q_gen():
-                yield json.dumps({"status": "needs_quant_selection", "repo_id": raw}) + "\n"
+                yield json.dumps({"status": "needs_quant_selection", "repo_id": target_repo}) + "\n"
             return StreamingResponse(q_gen(), media_type="application/x-ndjson")
 
+    # If we already have a direct file selection, proceed to download
+    repo_id, filename = direct_repo, direct_filename
     if not repo_id or not filename:
-        async def err(): yield json.dumps({"status": "error", "error": "Could not resolve model."}) + "\n"
-        return StreamingResponse(err(), media_type="application/x-ndjson")
+        # Fallback for manual colon syntax: owner/repo:file.gguf
+        raw = query
+        if ":" in raw:
+            p = raw.split(":", 1)
+            repo_id, filename = p[0].strip(), p[1].strip()
+        else:
+            async def err(): yield json.dumps({"status": "error", "error": "Could not resolve model or quantization."}) + "\n"
+            return StreamingResponse(err(), media_type="application/x-ndjson")
+
+    model_id = Path(filename).stem.lower().replace(" ", "-")
+    name = request.get("name") or f"{repo_id.split('/')[-1]} ({Path(filename).stem})"
 
     async def event_gen():
         try:

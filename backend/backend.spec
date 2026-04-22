@@ -10,11 +10,16 @@ datas = []
 binaries = []
 hiddenimports = []
 
-# Collect fastapi and uvicorn
-for pkg in ["fastapi", "uvicorn", "starlette", "pydantic", "pydantic_settings",
-            "sqlalchemy", "aiosqlite", "psutil", "cpuinfo", "aiofiles",
-            "httpx", "cryptography", "anyio", "click", "h11", "httptools",
-            "websockets", "watchfiles", "python_multipart"]:
+# Critical packages to collect fully
+packages_to_collect = [
+    "fastapi", "uvicorn", "starlette", "pydantic", "pydantic_settings",
+    "sqlalchemy", "aiosqlite", "psutil", "cpuinfo", "aiofiles",
+    "httpx", "cryptography", "anyio", "click", "h11", "httptools",
+    "websockets", "watchfiles", "python_multipart",
+    "llama_cpp"  # EXPLICITLY INCLUDE LLAMA-CPP
+]
+
+for pkg in packages_to_collect:
     try:
         d, b, h = collect_all(pkg)
         datas += d
@@ -40,7 +45,7 @@ a = Analysis(
         "hapie.api.chat",
         "hapie.api.models",
         "hapie.api.settings",
-        "hapie.api.prompts",
+        "hapie.api.recommend",
         "hapie.db",
         "hapie.hardware",
         "hapie.policy",
@@ -64,15 +69,16 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # Exclude heavy ML packages from the packaged binary.
-        # llama-cpp-python ships its own .dll, we keep it but exclude torch.
-        "torch",
-        "torchvision",
-        "tensorflow",
-        "matplotlib",
-        "notebook",
-        "IPython",
-        "PIL",
+        "torch", "torchvision", "torchaudio", "tensorflow", "tensorboard",
+        "matplotlib", "notebook", "IPython", "PIL",
+        "PyQt5", "PyQt6", "PySide2", "PySide6", "tkinter",
+        "langchain", "crewai", "django", "jax", "jaxlib", "altair",
+        "nbconvert", "nbformat", "plotly", "selenium", "playwright",
+        "boto3", "botocore", "google", "grpc", "mlflow", "pandas",
+        "scipy", "scikit-learn", "sklearn", "cv2", "pygame", "pdfminer",
+        "pypdfium2", "onnxruntime", "spacy", "thinc", "h5py", "opentelemetry",
+        "transformers", "datasets", "bitsandbytes", "fsspec", "sentencepiece",
+        "tokenizers"
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -92,7 +98,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,   # Keep console for debug; set False for silent background process
+    console=False,  # SILENT BACKGROUND PROCESS
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

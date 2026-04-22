@@ -29,6 +29,10 @@ Write-Host "[Phase 1/4] Building Python backend with PyInstaller..." -Foreground
 $backendDir = Join-Path $ROOT "backend"
 Push-Location $backendDir
 
+# Ensure requirements are installed (especially llama-cpp-python with binary wheels)
+Write-Host "  Installing backend dependencies..." -ForegroundColor Gray
+pip install -r requirements.txt --only-binary=:all: --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --quiet
+
 # Ensure pyinstaller is available
 if (-not (Get-Command pyinstaller -ErrorAction SilentlyContinue)) {
     Write-Host "  Installing PyInstaller..." -ForegroundColor Gray
@@ -112,7 +116,7 @@ Pop-Location
 
 # ── Done ───────────────────────────────────────────────────────────────────────
 $distDir = Join-Path $ROOT "dist"
-$installerExe = Join-Path $distDir "HAPIE Setup 1.0.0.exe"
+$installerExe = Join-Path $distDir "HAPIE-Desktop-Setup.exe"
 
 # Copy to happie web public directory if it exists
 $webDir = "E:\happie web\public"
@@ -128,5 +132,5 @@ Write-Host "  BUILD COMPLETE!" -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Installer located in: $distDir" -ForegroundColor White
-Write-Host "  Look for:  HAPIE Setup 1.0.0.exe" -ForegroundColor White
+Write-Host "  Look for:  HAPIE-Desktop-Setup.exe" -ForegroundColor White
 Write-Host ""

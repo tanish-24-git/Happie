@@ -46,22 +46,21 @@
       }
     ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/icon.ico"
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "artifactName": "HAPIE-Desktop-Setup.exe"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "shortcutName": "HAPIE",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerSidebar": "assets/installer-sidebar.png",
+      "installerHeader": "assets/installer-header.png",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "HAPIE"
+      "runAfterFinish": true
     }
   }
 }

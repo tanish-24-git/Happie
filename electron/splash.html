@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HAPIE Loading…</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .card {
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 20px;
+      padding: 48px 56px;
+      text-align: center;
+      box-shadow:
+        0 0 60px rgba(99, 102, 241, 0.15),
+        0 32px 64px rgba(0, 0, 0, 0.6);
+      width: 440px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(99, 102, 241, 0.05) 60deg,
+        transparent 120deg
+      );
+      animation: rotate 6s linear infinite;
+    }
+
+    @keyframes rotate {
+      to { transform: rotate(360deg); }
+    }
+
+    .logo-ring {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.5); }
+      50%       { box-shadow: 0 0 50px rgba(99, 102, 241, 0.8); }
+    }
+
+    .logo-ring svg {
+      width: 42px;
+      height: 42px;
+      fill: white;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #ffffff;
+      position: relative;
+      z-index: 1;
+      background: linear-gradient(90deg, #6366f1, #a78bfa, #6366f1);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      to { background-position: 200% center; }
+    }
+
+    .subtitle {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .status {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.55);
+      margin-top: 28px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .progress-track {
+      background: rgba(255,255,255,0.08);
+      border-radius: 99px;
+      height: 4px;
+      margin-top: 12px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #a78bfa);
+      border-radius: 99px;
+      animation: indeterminate 1.8s ease-in-out infinite;
+      transform-origin: left;
+    }
+
+    @keyframes indeterminate {
+      0%   { transform: scaleX(0) translateX(0); }
+      50%  { transform: scaleX(0.5) translateX(100%); }
+      100% { transform: scaleX(0) translateX(300%); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-ring">
+      <!-- CPU/chip icon -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 2v2H7a2 2 0 0 0-2 2v2H3v2h2v2H3v2h2v2a2 2 0 0 0 2 2h2v2h2v-2h2v2h2v-2h2a2 2 0 0 0 2-2v-2h2v-2h-2v-2h2V9h-2V7a2 2 0 0 0-2-2h-2V2h-2v2h-2V2H9zm-2 4h10v10H7V6zm2 2v6h6V8H9z"/>
+      </svg>
+    </div>
+    <h1>HAPIE</h1>
+    <p class="subtitle">Hardware-Aware Performance Inference Engine</p>
+    <p class="status" id="status">Starting backend…</p>
+    <div class="progress-track">
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+
+  <script>
+    const messages = [
+      'Starting backend…',
+      'Detecting hardware…',
+      'Loading inference engine…',
+      'Almost ready…',
+    ];
+    let i = 0;
+    const statusEl = document.getElementById('status');
+    setInterval(() => {
+      i = (i + 1) % messages.length;
+      statusEl.textContent = messages[i];
+    }, 2200);
+  </script>
+</body>
+</html>

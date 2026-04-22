@@ -1,15 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone', // Required for optimized Docker deployment
-  
-  // Proxy API requests to backend service
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/:path*`,
-      },
-    ];
+  // 'export' generates static HTML/CSS/JS for Electron desktop packaging.
+  // Switch back to 'standalone' for the Docker/server deployment.
+  output: 'export',
+
+  // Required for static export — disable server-side image optimization.
+  images: {
+    unoptimized: true,
   },
 };
 
